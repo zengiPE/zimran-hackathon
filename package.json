@@ -1,0 +1,15 @@
+{
+  "name": "zimran-hackathon",
+  "private": true,
+  "scripts": {
+    "setup": "npm install && npm install --prefix web && cd api && uv sync",
+    "dev": "concurrently -n web,api -c cyan,magenta \"npm:dev:web\" \"npm:dev:api\"",
+    "dev:web": "npm run dev --prefix web",
+    "dev:api": "cd api && uv run fastapi dev app/main.py --port 8000",
+    "lint": "npm run lint --prefix web && cd api && uv run ruff check .",
+    "test": "cd api && uv run pytest"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
