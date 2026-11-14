@@ -8,15 +8,17 @@ import { ErrorNote, PaperLoader } from "@/components/cf/States";
 import { createCase, errorText, getThemes, isStatus } from "@/lib/api";
 import { localPath, saveCase } from "@/lib/storage";
 
-const MIN_PLAYERS = 3;
-const MAX_PLAYERS = 6;
+// You plus 2 to 5 friends: 3 to 6 players in total (the engine's limits).
+const MIN_FRIENDS = 2;
+const MAX_FRIENDS = 5;
 
-/** The Create case form: theme, 3–6 names, demo mode. */
+/** The Create case form: theme, your name, 2–5 friends, demo mode. */
 export function CreateCase() {
   const router = useRouter();
   const themes = useSWR("themes", getThemes, { revalidateOnFocus: false });
   const [theme, setTheme] = useState("lake-house");
-  const [names, setNames] = useState<string[]>(["", "", "", ""]);
+  const [me, setMe] = useState(""); // the host plays too: seat 1
+  const [names, setNames] = useState<string[]>(["", "", ""]); // friends
   const [demo, setDemo] = useState(true);
   const [busy, setBusy] = useState(false);
   const [namesError, setNamesError] = useState<string | null>(null);
@@ -32,14 +34,20 @@ export function CreateCase() {
     setNamesError(null);
     setFormError(null);
 
-    const players = names.map((n) => n.trim()).filter(Boolean);
-    if (players.length < MIN_PLAYERS) {
-      setNamesError(`Add at least ${MIN_PLAYERS} names. You can't solve this one alone.`);
+    const myName = me.trim();
+    const friends = names.map((n) => n.trim()).filter(Boolean);
+    if (!myName) {
+      setNamesError("Add your name: you play this case too.");
       return;
     }
+    if (friends.length < MIN_FRIENDS) {
+      setNamesError(`Add at least ${MIN_FRIENDS} friends. You can't solve this one alone.`);
+      return;
+    }
+    const players = [myName, ...friends];
     const lower = players.map((n) => n.toLowerCase());
     if (new Set(lower).size !== lower.length) {
-      setNamesError("Two friends have the same name. Add an initial to tell them apart.");
+      setNamesError("Two players have the same name. Add an initial to tell them apart.");
       return;
     }
 
@@ -90,7 +98,20 @@ export function CreateCase() {
       </fieldset>
 
       <fieldset className="cf-fieldset" aria-describedby={namesError ? "names-error" : undefined}>
-        <legend className="cf-label">Your friends (3 to 6)</legend>
+        <legend className="cf-label">Players (3 to 6)</legend>
+        <label className="cf-sr" htmlFor="name-me">
+          Your name
+        </label>
+        <input
+          id="name-me"
+          className="cf-input"
+          type="text"
+          placeholder="Your name"
+          value={me}
+          maxLength={24}
+          autoComplete="given-name"
+          onChange={(e) => setMe(e.target.value)}
+        />
         {names.map((n, i) => (
           <div key={i} className="flex gap-2">
             <label className="cf-sr" htmlFor={`name-${i}`}>
@@ -106,14 +127,14 @@ export function CreateCase() {
               autoComplete="off"
               onChange={(e) => setName(i, e.target.value)}
             />
-            {names.length > MIN_PLAYERS && (
+            {names.length > MIN_FRIENDS && (
               <Button variant="quiet" onClick={() => removeName(i)} aria-label={`Remove friend ${i + 1}`}>
                 Remove
               </Button>
             )}
           </div>
         ))}
-        {names.length < MAX_PLAYERS && (
+        {names.length < MAX_FRIENDS && (
           <Button variant="quiet" className="justify-self-start" onClick={addName}>
             Add a friend
           </Button>

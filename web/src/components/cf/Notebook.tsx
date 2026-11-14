@@ -34,7 +34,15 @@ interface Props {
 }
 
 type GroupName = "Room" | "Time" | "Item";
-type Highlight = { row: number | null; col: string | null } | null;
+type Highlight = { row: number | string | null; col: string | null } | null;
+
+// Links between two groups, for clues that tie them without naming anyone:
+// "The person with the karaoke mic was not in the Copy Room."
+const PAIRS: [GroupName, GroupName][] = [
+  ["Room", "Time"],
+  ["Room", "Item"],
+  ["Time", "Item"],
+];
 
 function load(key: string): Marks {
   try {
@@ -73,6 +81,7 @@ export function Notebook({ suspects, labels, storageKey, clues, goal }: Props) {
   // Narrow notebooks show one group at a time (tabs); wide ones show all three.
   const [active, setActive] = useState<GroupName>("Room");
   const [cluesOpen, setCluesOpen] = useState(true);
+  const [activePair, setActivePair] = useState(0);
 
   const groups: Group[] = [
     { name: "Room", values: labels.room },
@@ -80,7 +89,14 @@ export function Notebook({ suspects, labels, storageKey, clues, goal }: Props) {
     { name: "Item", values: labels.item.map(dropArticle) },
   ];
   const names = suspects.map((s) => s.name);
+  const groupOf = (name: GroupName) => groups.find((g) => g.name === name) as Group;
+  // Automatic ✗ in the suspect grid and in every link grid (rows of A, columns of B).
   const auto = deriveAutoMarks(marks, names, groups);
+  for (const [a, b] of PAIRS) {
+    for (const key of deriveAutoMarks(marks, groupOf(a).values, [groupOf(b)])) auto.add(key);
+  }
+  const [pairA, pairB] = PAIRS[activePair];
+  const isKey = (v: string) => v === goal?.room || v === goal?.time;
 
   /** Light up a row and/or column; it fades after 1.5 s unless a key-focused box keeps it. */
   const flash = useCallback((h: Highlight, keep = false) => {
@@ -96,7 +112,7 @@ export function Notebook({ suspects, labels, storageKey, clues, goal }: Props) {
   }, []);
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
-  function tap(key: string, row: number, col: string, el: HTMLElement) {
+  function tap(key: string, row: number | string, col: string, el: HTMLElement) {
     const manual = marks[key] ?? "";
     // Tapping an automatic ✗ writes a manual ✗; after that the usual cycle.
     const next: Mark = !manual && auto.has(key) ? "no" : NEXT[manual];
@@ -145,7 +161,7 @@ export function Notebook({ suspects, labels, storageKey, clues, goal }: Props) {
     return () => window.removeEventListener(SUSPECT_EVENT, onSuspect);
   }, [suspects, flash]);
 
-  const rowLit = (id: number) => highlight?.row === id;
+  const rowLit = (id: number | string) => highlight?.row === id;
   const colLit = (v: string) => highlight?.col === v;
 
   return (
@@ -299,6 +315,86 @@ export function Notebook({ suspects, labels, storageKey, clues, goal }: Props) {
           </tbody>
         </table>
       </div>
+
+      <section className="cf-nb__links" aria-labelledby={`${cluesId}-links`}>
+        <h3 className="cf-nb__links-title" id={`${cluesId}-links`}>
+          Links
+        </h3>
+        <p className="cf-caption">
+          For clues that tie two things together without naming anyone, like &quot;the person in the Loft had the
+          fishing rod&quot;.
+        </p>
+        <div className="cf-seg" role="group" aria-label="Link grids">
+          {PAIRS.map(([a, b], i) => (
+            <button
+              key={a + b}
+              type="button"
+              className="cf-seg__btn"
+              aria-pressed={activePair === i}
+              onClick={() => setActivePair(i)}
+            >
+              {a} × {b}
+            </button>
+          ))}
+        </div>
+        <div className="cf-nb__scroll">
+          <table>
+            <thead>
+              <tr className="cf-nb__col">
+                <th className="cf-nb__corner">
+                  <span className="cf-sr">
+                    {pairA} by {pairB}
+                  </span>
+                </th>
+                {groupOf(pairB).values.map((v) => (
+                  <th key={v} scope="col" className={clsx(colLit(v) && "is-cross", isKey(v) && "is-key")}>
+                    <span>{v}</span>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {groupOf(pairA).values.map((r) => (
+                <tr key={r}>
+                  <th
+                    scope="row"
+                    className={clsx("cf-nb__name", rowLit(r) && "is-cross", isKey(r) && "cf-nb__name--key")}
+                  >
+                    {r}
+                  </th>
+                  {groupOf(pairB).values.map((v, i) => {
+                    const key = cellKey(r, v);
+                    const manual = marks[key] ?? "";
+                    const isAuto = !manual && auto.has(key);
+                    const shown: Mark = manual || (isAuto ? "no" : "");
+                    return (
+                      <td
+                        key={key}
+                        className={clsx("cf-nb__cell", i === 0 && "cf-nb__first", (rowLit(r) || colLit(v)) && "is-cross")}
+                      >
+                        <button
+                          type="button"
+                          className={clsx("cf-nb__btn", shown === "yes" && "is-yes", isAuto && "is-auto")}
+                          aria-label={`${r}, ${v}: ${WORD[shown]}${isAuto ? " (automatic)" : ""}`}
+                          onClick={(e) => tap(key, r, v, e.currentTarget)}
+                          onFocus={(e) => {
+                            if (e.currentTarget.matches(":focus-visible")) flash({ row: r, col: v }, true);
+                          }}
+                          onBlur={() => {
+                            if (!timer.current) setHighlight(null);
+                          }}
+                        >
+                          {GLYPH[shown]}
+                        </button>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       <div className="cf-nb__foot">
         <p className="cf-nb__legend">

@@ -377,12 +377,9 @@ a.cf-btn:focus-visible {
 }
 
 /* Legend and Undo under the grid. */
+/* Under the grid: the legend on its own line, then Undo and Clear all side by side. */
 .cf-nb__foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding-right: var(--space-2);
+  display: grid;
 }
 
 /* Reveal: the crew's record under the votes (retention loop). */
@@ -637,10 +634,53 @@ a.cf-btn:focus-visible {
 .cf-nb__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
+  align-items: center;
+  gap: var(--space-4);
+  padding: 0 var(--space-3) var(--space-3);
 }
 
 /* The pinned composer stays above the notebook's sticky name column. */
 .cf-composer--bar {
   z-index: 3;
+}
+
+/* Notebook: link grids (Room × Time, Room × Item, Time × Item) under the suspect grid. */
+.cf-nb__links {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-3) 0;
+  border-top: 2px solid var(--rule-blue);
+}
+.cf-nb__links-title {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 16px;
+  margin: 0;
+}
+.cf-nb__links .cf-nb__scroll {
+  margin: 0 calc(-1 * var(--space-3));
+}
+.cf-nb__links table {
+  width: 100%;
+}
+.cf-nb__links .cf-nb__btn {
+  width: 100%;
+}
+.cf-nb__name--key {
+  color: var(--stamp);
+}
+
+/* Grid boxes keep their 44px: full-width buttons inside auto-width cells would otherwise collapse. */
+.cf-notebook td.cf-nb__cell {
+  min-width: 44px;
+  width: 44px;
+}
+
+/* Link grids: room and time names as row labels are long ("Conference Room"); keep them compact. */
+.cf-notebook .cf-nb__links .cf-nb__name {
+  min-width: 0;
+  padding: 0 var(--space-2);
+  font-size: 13px;
+  line-height: 16px;
+  overflow-wrap: anywhere;
 }

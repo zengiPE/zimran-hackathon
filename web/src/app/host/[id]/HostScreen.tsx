@@ -10,6 +10,7 @@ import { RevealBoard } from "@/components/cf/RevealBoard";
 import { Stamp } from "@/components/cf/Stamp";
 import { PaperLoader } from "@/components/cf/States";
 import { advanceDay, askHint, errorText, isStatus } from "@/lib/api";
+import { loadCase, localPath } from "@/lib/storage";
 import type { HostOut, PlayerRow } from "@/lib/types";
 import { useHost, useReveal } from "@/lib/useCase";
 
@@ -27,6 +28,11 @@ export function HostScreen() {
   const reveal = useReveal(id, host?.phase === "reveal");
   // Which button is waiting for the server (it can take a few seconds on prod).
   const [busy, setBusy] = useState<null | "hint" | "next">(null);
+  // The host plays too: the first seat of a case created in this browser is theirs.
+  const [mySeat] = useState(() => {
+    const seat = loadCase(id)?.invites[0];
+    return seat && !seat.ai ? seat : null;
+  });
   const [note, setNote] = useState<string | null>(null);
 
   async function nextDay() {
@@ -121,6 +127,17 @@ export function HostScreen() {
                   <Button variant="primary" small disabled={busy !== null} onClick={nextDay}>
                     {busy === "next" ? "Working…" : nextLabel}
                   </Button>
+                )}
+                {mySeat && (
+                  // A new tab, so the host screen stays open as the remote control.
+                  <a
+                    className="cf-btn cf-btn--secondary cf-btn--sm"
+                    href={localPath(mySeat.url)}
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    Play as {mySeat.name}
+                  </a>
                 )}
               </div>
               {note && (

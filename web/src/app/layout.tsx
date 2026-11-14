@@ -17,13 +17,17 @@ const display = Big_Shoulders({
 const body = IBM_Plex_Sans({
   variable: "--font-body",
   weight: ["400", "500", "600"],
-  subsets: ["latin"],
+  subsets: ["latin", "cyrillic", "cyrillic-ext"], // names in Russian and Kazakh (ә, қ, ң, ө, ұ, ү, і)
 });
 
+// Courier Prime has no Cyrillic: names like "Даулет" fall back to Courier New
+// (also a typewriter face) instead of a random system font.
 const type = Courier_Prime({
   variable: "--font-type",
   weight: ["400", "700"],
   subsets: ["latin"],
+  fallback: ["Courier New", "monospace"],
+  adjustFontFallback: false,
 });
 
 export const metadata: Metadata = {

@@ -42,3 +42,13 @@ test("a manual ✗ under an automatic one stays manual, and ✗ alone derives no
   assert.equal(marks[k("Jordan", "Sunroom")], "no"); // …but the manual mark is what is stored
   assert.equal(deriveAutoMarks({ [k("Leo", "Loft")]: "no" }, suspects, groups).size, 0);
 });
+
+test("link grid (Room × Item): a ✓ rules out the rest of that room's row and that item's column", () => {
+  const rooms = ["Porch", "Loft", "Sunroom"];
+  const items: Group = { name: "Item", values: ["guitar", "fishing rod", "flashlight"] };
+  const auto = deriveAutoMarks({ [k("Loft", "fishing rod")]: "yes" }, rooms, [items]);
+  assert.deepEqual(
+    [...auto].sort(),
+    [k("Loft", "flashlight"), k("Loft", "guitar"), k("Porch", "fishing rod"), k("Sunroom", "fishing rod")].sort(),
+  );
+});
