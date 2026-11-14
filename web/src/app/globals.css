@@ -39,6 +39,7 @@ body {
 */
 .cf-screen {
   grid-template-columns: minmax(0, 1fr);
+  align-content: start; /* short screens: no stretched gaps between sections */
 }
 
 /*
@@ -240,4 +241,19 @@ a.cf-btn:focus-visible {
   position: sticky;
   top: var(--space-2);
   z-index: 2;
+}
+
+/* Paywall plan card: name on the left, price on the right. */
+.cf-choice__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+.cf-choice__price {
+  flex: none;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 24px;
+  line-height: 1;
 }
