@@ -32,13 +32,16 @@ export interface Clue {
 
 export interface BoardPost {
   author: string;
-  text: string;
+  text: string; // can be "" when a clue is attached
   ts: string;
+  is_ai?: boolean; // an AI teammate's post (AI friends API)
+  fact?: Clue | null; // attached clue ("Share this clue")
 }
 
 export interface PlayerRow {
   idx: number;
   name: string;
+  is_ai?: boolean; // an AI teammate's seat
   joined: boolean;
   opened_today: boolean;
   voted: boolean;
@@ -60,8 +63,9 @@ interface CaseCommon {
 }
 
 export interface CreateCaseIn {
-  theme: string;
-  players: string[]; // 3–6 names
+  theme?: string;
+  players?: (string | { name: string; ai?: boolean })[]; // 3–6 seats; not needed with solo
+  solo?: { me: string }; // you + 3 AI teammates, 3 days, demo on
   demo?: boolean;
   days?: number; // 2–5
   seed?: number; // same seed = same case (for the demo)
@@ -72,6 +76,7 @@ export interface Invite {
   name: string;
   token: string;
   url: string;
+  ai?: boolean; // an AI teammate's seat
 }
 
 export interface CreateCaseOut {
@@ -83,10 +88,11 @@ export interface CreateCaseOut {
 }
 
 export interface MeOut extends CaseCommon {
-  me: { idx: number; name: string };
+  me: { idx: number; name: string; is_ai?: boolean };
   my_clues: Clue[];
   shared_clues: Clue[];
   board: BoardPost[]; // last 100, oldest first
+  typing?: string[]; // AI teammates writing a reply right now (AI friends API)
   players: PlayerRow[];
   my_vote: number | null; // suspect id
 }

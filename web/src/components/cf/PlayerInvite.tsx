@@ -11,13 +11,14 @@ interface Props {
   url: string; // full link from the API, used as is
   joined: boolean;
   status?: string; // e.g. "Opened today's clue"
+  ai?: boolean; // an AI teammate's seat: no QR, nobody needs to scan it
 }
 
 /** Link without the protocol, so people can type it. */
 const shortLink = (url: string) => url.replace(/^https?:\/\//, "");
 
 /** Invite card for the Host screen: name, a real QR of the link, "Joined" stamp. */
-export function PlayerInvite({ name, url, joined, status }: Props) {
+export function PlayerInvite({ name, url, joined, status, ai }: Props) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {
@@ -28,6 +29,17 @@ export function PlayerInvite({ name, url, joined, status }: Props) {
     } catch {
       // Clipboard blocked: the link is printed on the card anyway.
     }
+  }
+
+  if (ai) {
+    return (
+      <article className="cf-invite">
+        <h3 className="cf-invite__name">{name}</h3>
+        <span className="cf-tag">AI teammate</span>
+        <p className="cf-caption">Plays along by itself. No link needed.</p>
+        {status && <p className="cf-caption">{status}</p>}
+      </article>
+    );
   }
 
   return (

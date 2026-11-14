@@ -66,8 +66,9 @@ export const getMe = (id: string, token: string) =>
   request<MeOut>(`/api/cases/${q(id)}/me?token=${q(token)}`);
 export const getHost = (id: string, token: string) =>
   request<HostOut>(`/api/cases/${q(id)}/host?token=${q(token)}`);
-export const postBoard = (id: string, token: string, text: string) =>
-  post<BoardPost>(`/api/cases/${q(id)}/board`, { token, text });
+/** A board post: text, an attached clue of yours (factId), or both. */
+export const postBoard = (id: string, token: string, text: string, factId?: string) =>
+  post<BoardPost>(`/api/cases/${q(id)}/board`, factId ? { token, text, fact_id: factId } : { token, text });
 export const castVote = (id: string, token: string, suspect: number) =>
   post<VoteOut>(`/api/cases/${q(id)}/vote`, { token, suspect });
 export const advanceDay = (id: string, hostToken: string) =>

@@ -33,7 +33,10 @@ export default function Home() {
           Start a case
         </ButtonLink>
         <TryDemo />
-        <p className="cf-caption">The demo is a ready case for four. You play every seat and move the days yourself.</p>
+        <p className="cf-caption">
+          Play a ready case now with three AI teammates. They share their clues and argue back, so you can
+          try it alone.
+        </p>
       </header>
 
       <section className="cf-stack" aria-labelledby="how">

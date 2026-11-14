@@ -43,6 +43,14 @@ function makeTimes() {
     { author: "Blake", text: "Mine says Jordan was not seen at 7. Crossing him off.", ts: yesterday },
     { author: "Casey", text: "Careful, we don't know WHEN Leo was on the porch. Anyone have times?", ts: today },
     { author: "Alex", text: "Leo was seen at 7:30 or 9:00. So not him in the Sunroom at 7.", ts: today },
+    {
+      author: "Nora",
+      text: "Here's mine for today. Don't read too much into it yet.",
+      ts: today,
+      is_ai: true,
+      fact: clues.guestbookStory,
+    },
+    { author: "Alex", text: "", ts: today, fact: clues.photoTemplate },
   ];
   return { posts, in6h: new Date(now + (6 * 60 + 12) * 60_000).toISOString() };
 }
@@ -91,7 +99,7 @@ export function Kit() {
 
         <Section title="DemoBar">
           <DemoBar
-            names={me.players.map((p) => p.name)}
+            seats={[{ name: "Alex" }, { name: "Nora", ai: true }, { name: "Felix", ai: true }, { name: "Kai", ai: true }]}
             current="Alex"
             day={2}
             daysTotal={3}
@@ -218,8 +226,8 @@ export function Kit() {
         <Section title="Board · empty">
           <Board posts={[]} myName="Alex" />
         </Section>
-        <Section title="Board · posts, composer that fails with 403">
-          <Board posts={posts} myName="Alex">
+        <Section title="Board · posts, AI teammate, shared clues, typing, composer that fails with 403">
+          <Board posts={posts} myName="Alex" typing={["Felix", "Kai"]}>
             <Composer
               onPost={async () => {
                 await wait(300);

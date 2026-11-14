@@ -10,6 +10,7 @@ import { Composer } from "@/components/cf/Composer";
 import { Drawer } from "@/components/cf/Drawer";
 import { Notebook } from "@/components/cf/Notebook";
 import { RevealBoard } from "@/components/cf/RevealBoard";
+import { ShareClue } from "@/components/cf/ShareClue";
 import { Roster } from "@/components/cf/RosterRow";
 import { ErrorNote, PaperLoader, PaperSkeleton, Screen } from "@/components/cf/States";
 import { VotePicker } from "@/components/cf/VotePicker";
@@ -17,6 +18,7 @@ import { advanceDay, askHint, castVote, errorText, isStatus, postBoard } from "@
 import { caseCopy } from "@/lib/caseCopy";
 import { paragraphs } from "@/lib/format";
 import { loadCase, readJSON, writeJSON } from "@/lib/storage";
+import type { Clue } from "@/lib/types";
 import { useMe, useReveal } from "@/lib/useCase";
 
 export function PlayerScreen() {
@@ -105,13 +107,23 @@ export function PlayerScreen() {
     .sort((a, b) => b.day - a.day)
     .map((c) => ({ id: c.id, text: c.text, isNew: c.id === today?.id }));
 
-  async function post(text: string) {
+  // AI teammates (new API): who is typing, which of your clues are already on the board.
+  const aiApi = me.typing !== undefined;
+  const viewingAi = Boolean(me.me.is_ai); // DemoBar switched to an AI seat: read only
+  const sharedIds = new Set(
+    me.board.filter((b) => b.author === me.me.name && b.fact).map((b) => (b.fact as Clue).id),
+  );
+  const canShare = aiApi && !viewingAi;
+
+  async function post(text: string, factId?: string) {
     try {
-      const fresh = await postBoard(id, myToken, text);
+      const fresh = await postBoard(id, myToken, text, factId);
       // Show the post right away, without waiting for the next poll.
       await mutate((d) => (d ? { ...d, board: [...d.board, fresh] } : d), { revalidate: false });
       // Bring the new post into view above the pinned composer.
       requestAnimationFrame(() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }));
+      // AI teammates start "typing" a reply right away: refresh soon to show it.
+      if (aiApi) setTimeout(() => void mutate(), 600);
     } catch (err) {
       if (!isStatus(err, 409)) throw err;
       await mutate(); // 409 = wrong phase: quietly refresh /me
@@ -154,7 +166,7 @@ export function PlayerScreen() {
     <Screen>
       {demo && (
         <DemoBar
-          names={demo.invites.map((i) => i.name)}
+          seats={demo.invites}
           current={me.me.name}
           day={me.day}
           daysTotal={me.days_total}
@@ -163,6 +175,13 @@ export function PlayerScreen() {
           onNextDay={demoNextDay}
           onHint={demoHint}
         />
+      )}
+
+      {viewingAi && (
+        <p className="cf-error" role="status">
+          You&apos;re looking at {me.me.name}&apos;s screen. {me.me.name} is an AI teammate: switch back to
+          yourself to post or vote.
+        </p>
       )}
 
       <CaseHeader
@@ -184,7 +203,16 @@ export function PlayerScreen() {
         ))}
       </Drawer>
 
-      {me.phase === "vote" ? (
+      {me.phase === "vote" && viewingAi ? (
+        <section ref={todayRef} className="cf-stack scroll-mt-4">
+          <h2 className="cf-heading">{caseCopy(me.title).question}</h2>
+          <p className="m-0">
+            {me.my_vote !== null
+              ? `${me.me.name} voted for ${me.suspects.find((s) => s.id === me.my_vote)?.name ?? "someone"}.`
+              : `${me.me.name} hasn't voted yet.`}
+          </p>
+        </section>
+      ) : me.phase === "vote" ? (
         <section ref={todayRef} className="scroll-mt-4">
           <VotePicker
             key={myToken}
@@ -202,8 +230,9 @@ export function PlayerScreen() {
             Today&apos;s evidence
           </h2>
           {today ? (
-            <div key={today.id} className="cf-fade">
+            <div key={today.id} className="cf-fade cf-stack">
               <ClueCard clue={today} exhibit={exhibit(today.id)} isNew />
+              {canShare && <ShareClue shared={sharedIds.has(today.id)} onShare={() => post("", today.id)} />}
             </div>
           ) : (
             <p className="cf-caption">No clue for you today. Check the board.</p>
@@ -214,7 +243,10 @@ export function PlayerScreen() {
       {earlier.length > 0 && (
         <Drawer title={`Your earlier clues (${earlier.length})`} bodyClassName="cf-stack">
           {earlier.map((c) => (
-            <ClueCard key={c.id} clue={c} exhibit={exhibit(c.id)} />
+            <div key={c.id} className="cf-stack">
+              <ClueCard clue={c} exhibit={exhibit(c.id)} />
+              {canShare && <ShareClue shared={sharedIds.has(c.id)} onShare={() => post("", c.id)} />}
+            </div>
           ))}
         </Drawer>
       )}
@@ -244,8 +276,8 @@ export function PlayerScreen() {
         <Roster players={me.players} phase={me.phase} myIdx={me.me.idx} />
       </Drawer>
 
-      <Board posts={me.board} myName={me.me.name} />
-      <Composer pinned onPost={post} />
+      <Board posts={me.board} myName={me.me.name} typing={me.typing} />
+      {!viewingAi && <Composer pinned onPost={(text) => post(text)} />}
     </Screen>
   );
 }
