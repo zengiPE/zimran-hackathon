@@ -87,6 +87,24 @@ export interface CreateCaseOut {
   invites: Invite[];
 }
 
+/** The same friends playing case after case (retention loop, PR #10). */
+export interface Crew {
+  case_number: number; // "Case #2"
+  cases_played: number; // finished cases
+  cases_solved: number; // at least half of the people named the culprit
+  streak: number; // solved in a row
+  history: { case_id: string; title: string; culprit: string; solved: boolean }[];
+  members: { name: string; is_ai: boolean; played: number; correct: number }[];
+}
+
+/** Can the crew open its next case now, or must someone pay first? */
+export interface NextAccess {
+  requires_payment: boolean; // true → the button goes to /paywall
+  paid: boolean;
+  plan: "case" | "monthly" | null;
+  payments_enabled: boolean;
+}
+
 export interface MeOut extends CaseCommon {
   me: { idx: number; name: string; is_ai?: boolean };
   my_clues: Clue[];
@@ -95,11 +113,17 @@ export interface MeOut extends CaseCommon {
   typing?: string[]; // AI teammates writing a reply right now (AI friends API)
   players: PlayerRow[];
   my_vote: number | null; // suspect id
+  crew?: Crew;
+  next_case?: { case_id: string; url: string | null } | null; // reveal only: your link into the next case
+  next_access?: NextAccess; // reveal only
 }
 
 export interface HostOut extends CaseCommon {
   players: PlayerRow[]; // with token and url
   votes_count: number;
+  crew?: Crew;
+  next_case?: { case_id: string; url: null; host_url: string } | null; // reveal only
+  next_access?: NextAccess; // reveal only
 }
 
 export interface ChainStep {
@@ -121,6 +145,9 @@ export interface RevealOut {
   truth: { suspect: string; room: string; time: string; item: string }[];
   chain: ChainStep[];
   votes: { player: string; suspect: string; correct: boolean }[];
+  crew?: Crew;
+  next_case_id?: string | null;
+  next_access?: NextAccess;
   stats: {
     worlds_total: number;
     worlds_public: number;
@@ -128,6 +155,12 @@ export interface RevealOut {
     candidates_by_day: number[];
     seed: number;
   };
+}
+
+/** POST /cases/{id}/next: the new case plus your own seat in it. */
+export interface NextCaseOut extends CreateCaseOut {
+  theme: string;
+  you: Invite | null; // null when the host opened it
 }
 
 export interface VoteOut {

@@ -339,3 +339,18 @@ a.cf-btn:focus-visible {
   gap: var(--space-2);
   padding-right: var(--space-2);
 }
+
+/* Reveal: the crew's record under the votes (retention loop). */
+.cf-crew {
+  display: grid;
+  gap: var(--space-2);
+  width: 100%;
+  border-top: 2px solid var(--rule-blue);
+  padding-top: var(--space-3);
+}
+.cf-crew__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+}
