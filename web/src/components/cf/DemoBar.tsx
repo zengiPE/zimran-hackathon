@@ -13,7 +13,7 @@ interface Props {
   phase: Phase;
   onViewAs: (name: string) => void;
   onNextDay: () => Promise<void>;
-  onHint: () => Promise<void>;
+  onHint: () => Promise<string | void>; // may return what to tell the player ("Hint: Даулет's clue…")
 }
 
 /** Demo controls: play every seat, move the day, ask for a hint. */
@@ -22,12 +22,12 @@ export function DemoBar({ seats, current, day, daysTotal, phase, onViewAs, onNex
   const [busy, setBusy] = useState<null | "hint" | "next">(null);
   const [note, setNote] = useState<string | null>(null);
 
-  async function run(action: () => Promise<void>, hint = false) {
+  async function run(action: () => Promise<string | void>, hint = false) {
     setBusy(hint ? "hint" : "next");
     setNote(null);
     try {
-      await action();
-      if (hint) setNote("A clue is now open for everyone.");
+      const message = await action();
+      if (hint) setNote(message || "A clue is now open for everyone.");
     } catch (err) {
       setNote(hint && isStatus(err, 409) ? "No hints yet." : errorText(err));
     } finally {
