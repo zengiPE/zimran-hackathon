@@ -1,7 +1,7 @@
 # Deploys web/ and api/ to Vercel on every push and PR.
 # Vercel's own Git integration is turned off (git.deploymentEnabled=false in each vercel.json):
 # on the free Hobby plan it blocks commits from teammates in a private repo. Here every deploy
-# is made with the owner's VERCEL_TOKEN, so it doesn't matter who authored the commit.
+# is made with the owner's Vercel token (repo secret ACTIONS), so it doesn't matter who authored the commit.
 name: Deploy
 
 # Every branch push deploys: main → production, other branches → preview (URL is commented on the PR)
@@ -33,7 +33,8 @@ jobs:
             project_id: prj_nj6rt9p5NSPzfK3wKzInsoSd9qKK
     env:
       VERCEL_PROJECT_ID: ${{ matrix.project_id }}
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      # Vercel access token of the project owner, stored as repo secret ACTIONS
+      VERCEL_TOKEN: ${{ secrets.ACTIONS }}
       IS_PROD: ${{ github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@v4
@@ -41,7 +42,7 @@ jobs:
       - name: Check token
         run: |
           if [ -z "$VERCEL_TOKEN" ]; then
-            echo "::error::Secret VERCEL_TOKEN is not set (repo Settings → Secrets and variables → Actions)"
+            echo "::error::Secret ACTIONS (Vercel token) is not set (repo Settings → Secrets and variables → Actions)"
             exit 1
           fi
 

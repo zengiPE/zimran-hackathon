@@ -33,7 +33,7 @@ npm run dev                       # web на :3000, api на :8000
 
 - Production: фронт https://zimran-hackathon-web.vercel.app, API https://zimran-hackathon-api.vercel.app
 
-Два проекта в личном Vercel (Hobby). Деплоит GitHub Actions (`.github/workflows/deploy.yml`) токеном владельца из секрета `VERCEL_TOKEN`, поэтому пушить может любой участник. Собственный Git-автодеплой Vercel отключён (`git.deploymentEnabled: false` в `vercel.json`), потому что на Hobby он блокирует коммиты других участников.
+Два проекта в личном Vercel (Hobby). Деплоит GitHub Actions (`.github/workflows/deploy.yml`) токеном владельца из секрета репо `ACTIONS` (Vercel access token), поэтому пушить может любой участник. Собственный Git-автодеплой Vercel отключён (`git.deploymentEnabled: false` в `vercel.json`), потому что на Hobby он блокирует коммиты других участников.
 
 | Проект | Root | Что |
 |---|---|---|
