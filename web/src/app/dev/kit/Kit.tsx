@@ -161,7 +161,7 @@ export function Kit() {
         </Section>
 
         <Section title="ClueCard · today, text message (LLM story, Fact shown)">
-          <ClueCard clue={clues.messageNew} exhibit={2} isNew />
+          <ClueCard clue={clues.messageNew} exhibit={2} isNew suspectNames={me.suspects.map((s) => s.name)} />
         </Section>
         <Section title="ClueCard · template story (Fact hidden, it repeats the story)">
           <ClueCard clue={clues.photoTemplate} exhibit={1} />
@@ -169,13 +169,14 @@ export function Kit() {
         </Section>
         <Section title="ClueCard · receipt and guestbook (LLM story)">
           <ClueCard clue={clues.receiptStory} exhibit={2} />
-          <ClueCard clue={clues.guestbookStory} exhibit={3} />
+          <ClueCard clue={clues.guestbookStory} exhibit={3} suspectNames={me.suspects.map((s) => s.name)} />
         </Section>
         <Section title="ClueCard · no story">
           <ClueCard clue={clues.noStory} exhibit={1} />
         </Section>
-        <Section title="ClueCard · shared">
-          <ClueCard clue={clues.sharedOverheard} shared />
+        <Section title="ClueCard · shared: not used, used">
+          <ClueCard clue={clues.sharedOverheard} shared onToggleUsed={() => {}} />
+          <ClueCard clue={clues.sharedOverheard} shared used onToggleUsed={() => {}} />
         </Section>
 
         <Section title="Notebook">
@@ -184,9 +185,8 @@ export function Kit() {
             labels={me.labels}
             storageKey="notebook:kit:demo"
             clues={[
-              { id: "a", text: clues.messageNew.text, isNew: true },
-              { id: "b", text: clues.photoTemplate.text },
-              { id: "c", text: clues.sharedOverheard.text },
+              { id: "a", exhibit: 2, day: 2, text: clues.messageNew.text, isNew: true },
+              { id: "b", exhibit: 1, day: 1, text: clues.photoTemplate.text },
             ]}
           />
         </Section>

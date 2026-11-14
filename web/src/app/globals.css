@@ -285,43 +285,88 @@ a.cf-btn:focus-visible {
   max-width: 100%;
 }
 
-/* "Your clues" strip above the grid. */
+/* "Your clues" strip above the grid: plain rows, not cards. */
 .cf-nb__clues {
   border-bottom: 2px solid var(--rule-blue);
 }
-.cf-nb__clues > summary {
-  min-height: 44px;
+.cf-nb__clues-toggle {
   display: flex;
   align-items: center;
+  width: 100%;
+  min-height: 48px;
   padding: 0 var(--space-3);
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-body);
   font-weight: 600;
-  font-size: 15px;
+  font-size: 16px;
+  text-align: left;
   cursor: pointer;
 }
-.cf-nb__clues > summary:focus-visible {
+.cf-nb__clues-toggle::after {
+  content: "+";
+  margin-left: auto;
+  font-family: var(--font-type);
+  font-weight: 700;
+  font-size: 20px;
+}
+.cf-nb__clues-toggle[aria-expanded="true"]::after {
+  content: "3";
+}
+.cf-nb__clues-toggle:focus-visible {
   outline: 3px solid var(--ink);
   outline-offset: -3px;
 }
-.cf-nb__clues ul {
+.cf-nb__clues-list {
+  max-height: 40vh;
+  overflow-y: auto;
+  padding: 0 var(--space-3) var(--space-3);
+}
+.cf-nb__clues-list ul {
   list-style: none;
   margin: 0;
-  padding: 0 var(--space-3) var(--space-3);
-  display: grid;
-  gap: var(--space-2);
-  font-family: var(--font-type);
-  font-weight: 700;
-  font-size: 14px;
-  line-height: 20px;
+  padding: 0;
 }
-.cf-nb__clues mark {
+.cf-nb__clues-list li {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--rule-blue);
+}
+.cf-nb__clues-list mark {
   background: var(--marker);
   color: var(--ink);
   padding: 1px 3px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
 
-/* Automatic ✗: faint, so manual marks stand out. */
+/* A suspect's name inside a clue: opens their row in the notebook. */
+.cf-namelink {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--stamp);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.cf-namelink:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+.cf-nb__name:focus {
+  outline: 3px solid var(--ink);
+  outline-offset: -3px;
+}
+
+/* Automatic ✗: smaller, so manual marks stand out. */
 .cf-nb__btn.is-auto {
-  opacity: 0.5;
+  font-size: 15px; /* smaller than a manual mark (20px) */
+  opacity: 0.8; /* 80% keeps ink-muted at 5.1:1 on card */
 }
 
 /* Crosshair: the row and column of the box in focus. */
@@ -465,4 +510,16 @@ a.cf-btn:focus-visible {
   .cf-nb__tabs {
     display: none;
   }
+}
+
+/* A shared clue the player marked as used: muted text, no highlighter. */
+.cf-clue.is-used .cf-clue__text,
+.cf-clue.is-used .cf-msg__bubble,
+.cf-clue.is-used .cf-receipt__body,
+.cf-clue.is-used .cf-fact__text {
+  color: var(--ink-muted);
+}
+.cf-clue.is-used mark {
+  background: none;
+  color: inherit;
 }

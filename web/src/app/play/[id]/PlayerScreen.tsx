@@ -33,6 +33,17 @@ export function PlayerScreen() {
   // A demo case created in this browser: we know every seat and the host token.
   const [saved] = useState(() => loadCase(id));
 
+  // Shared clues the player marked as used (only in this browser; own key, not the notebook's).
+  const usedKey = `used:${id}:${token}`;
+  const [used, setUsed] = useState<string[]>(() => readJSON<string[]>(usedKey) ?? []);
+  function toggleUsed(clueId: string) {
+    setUsed((prev) => {
+      const next = prev.includes(clueId) ? prev.filter((x) => x !== clueId) : [...prev, clueId];
+      writeJSON(usedKey, next);
+      return next;
+    });
+  }
+
   // A demo case created here: remember the next case's seats too, so DemoBar keeps working.
   function rememberNext(out: NextCaseOut) {
     if (saved) saveCase({ case_id: out.case_id, host_token: out.host_token, invites: out.invites, demo: true });
@@ -120,10 +131,11 @@ export function PlayerScreen() {
   const earlier = clues.filter((c) => c !== today).reverse(); // newest first
   const opened = me.players.filter((p) => p.opened_today).length;
   const voted = me.players.filter((p) => p.voted).length;
-  // Facts for the notebook strip: your clues and shared ones, newest first.
-  const notebookClues = [...me.my_clues, ...me.shared_clues]
-    .sort((a, b) => b.day - a.day)
-    .map((c) => ({ id: c.id, text: c.text, isNew: c.id === today?.id }));
+  const suspectNames = me.suspects.map((s) => s.name);
+  // Facts for the notebook strip: your own clues only, newest first.
+  const notebookClues = [...clues]
+    .reverse()
+    .map((c) => ({ id: c.id, exhibit: exhibit(c.id), day: c.day, text: c.text, isNew: c.id === today?.id }));
 
   // AI teammates (new API): who is typing, which of your clues are already on the board.
   const aiApi = me.typing !== undefined;
@@ -256,7 +268,7 @@ export function PlayerScreen() {
             </h2>
             {today ? (
               <div key={today.id} className="cf-fade cf-stack">
-                <ClueCard clue={today} exhibit={exhibit(today.id)} isNew />
+                <ClueCard clue={today} exhibit={exhibit(today.id)} isNew suspectNames={suspectNames} />
                 {canShare && <ShareClue shared={sharedIds.has(today.id)} onShare={() => post("", today.id)} />}
               </div>
             ) : (
@@ -269,7 +281,7 @@ export function PlayerScreen() {
           <Drawer title={`Your earlier clues (${earlier.length})`} bodyClassName="cf-stack">
             {earlier.map((c) => (
               <div key={c.id} className="cf-stack">
-                <ClueCard clue={c} exhibit={exhibit(c.id)} />
+                <ClueCard clue={c} exhibit={exhibit(c.id)} suspectNames={suspectNames} />
                 {canShare && <ShareClue shared={sharedIds.has(c.id)} onShare={() => post("", c.id)} />}
               </div>
             ))}
@@ -292,7 +304,14 @@ export function PlayerScreen() {
               Opened for everyone
             </h2>
             {me.shared_clues.map((c) => (
-              <ClueCard key={c.id} clue={c} shared />
+              <ClueCard
+              key={c.id}
+              clue={c}
+              shared
+              suspectNames={suspectNames}
+              used={used.includes(c.id)}
+              onToggleUsed={() => toggleUsed(c.id)}
+            />
             ))}
           </section>
         )}
