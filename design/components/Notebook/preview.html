@@ -1,0 +1,56 @@
+<!-- @dsCard group="Case" height=440 subtitle="The player's private logic grid: suspects against room, time and item" -->
+<div class="cf-desk">
+  <div class="cf-notebook" id="cf-nb"></div>
+</div>
+<script>
+(function () {
+  var suspects = ['Priya', 'Jordan', 'Leo', 'Maya', 'Sam'];
+  var groups = [
+    { name: 'Room', values: ['Porch', 'Kitchen', 'Boathouse', 'Loft', 'Sunroom'] },
+    { name: 'Time', values: ['7:00 PM', '7:30 PM', '8:00 PM', '8:30 PM', '9:00 PM'] },
+    { name: 'Item', values: ['rosé', 'flashlight', 'fishing rod', 'guitar', 'deck of cards'] }
+  ];
+  var marks = {
+    'Jordan|7:00 PM': 'no', 'Leo|Porch': 'yes', 'Leo|Kitchen': 'no', 'Leo|Boathouse': 'no', 'Leo|Loft': 'no', 'Leo|Sunroom': 'no',
+    'Priya|Porch': 'no', 'Jordan|Porch': 'no', 'Maya|Porch': 'no', 'Sam|Porch': 'no', 'Sam|Loft': 'yes', 'Sam|Sunroom': 'no'
+  };
+  var GLYPH = { yes: '✓', no: '✗', '': '' };
+  var WORD = { yes: 'confirmed', no: 'ruled out', '': 'blank' };
+  var NEXT = { '': 'no', no: 'yes', yes: '' };
+  var root = document.getElementById('cf-nb');
+  var t = document.createElement('table');
+  var head1 = document.createElement('tr'); head1.className = 'cf-nb__group';
+  var corner = document.createElement('th'); corner.className = 'cf-nb__corner'; corner.rowSpan = 2; head1.appendChild(corner);
+  var head2 = document.createElement('tr'); head2.className = 'cf-nb__col';
+  groups.forEach(function (g) {
+    var th = document.createElement('th'); th.colSpan = g.values.length; th.scope = 'colgroup'; th.textContent = g.name; head1.appendChild(th);
+    g.values.forEach(function (v) { var c = document.createElement('th'); c.scope = 'col'; var s = document.createElement('span'); s.textContent = v; c.appendChild(s); head2.appendChild(c); });
+  });
+  var thead = document.createElement('thead'); thead.appendChild(head1); thead.appendChild(head2); t.appendChild(thead);
+  var tbody = document.createElement('tbody');
+  suspects.forEach(function (who) {
+    var tr = document.createElement('tr');
+    var th = document.createElement('th'); th.scope = 'row'; th.className = 'cf-nb__name'; th.textContent = who; tr.appendChild(th);
+    groups.forEach(function (g) {
+      g.values.forEach(function (v, i) {
+        var td = document.createElement('td'); td.className = 'cf-nb__cell' + (i === 0 ? ' cf-nb__first' : '');
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'cf-nb__btn';
+        var state = marks[who + '|' + v] || '';
+        function paint() {
+          b.textContent = GLYPH[state];
+          b.classList.toggle('is-yes', state === 'yes');
+          b.setAttribute('aria-label', who + ', ' + v + ': ' + WORD[state]);
+        }
+        b.addEventListener('click', function () { state = NEXT[state]; paint(); });
+        paint(); td.appendChild(b); tr.appendChild(td);
+      });
+    });
+    tbody.appendChild(tr);
+  });
+  t.appendChild(tbody);
+  root.appendChild(t);
+  var p = document.createElement('p'); p.className = 'cf-nb__legend';
+  p.textContent = 'Tap a box: ✗ ruled out, ✓ confirmed. Only you can see your notebook.';
+  root.appendChild(p);
+})();
+</script>

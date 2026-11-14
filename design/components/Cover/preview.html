@@ -1,0 +1,40 @@
+<!-- @dsCard height=288 -->
+<div class="cv">
+  <style>
+    .cv { position: relative; width: 960px; height: 288px; overflow: hidden; background: var(--folder); }
+    .cv svg { position: absolute; inset: 0; width: 960px; height: 288px; }
+    .cv .k-cork { fill: var(--cork); }
+    .cv .k-card { fill: var(--card); }
+    .cv .k-stamp { fill: var(--stamp); }
+    .cv .k-pin { fill: var(--string); }
+    .cv .k-string { fill: none; stroke: var(--string); stroke-width: 2.5px; stroke-linecap: round; }
+    .cv .k-head { stroke: var(--rule-blue); stroke-width: 2px; }
+    .cv .k-rule { stroke: var(--rule-blue); stroke-width: 1px; }
+    .cv .r-paper { rx: var(--radius-paper); }
+    .cv__text { position: absolute; left: 48px; bottom: 40px; max-width: 440px; }
+    .cv__name { font-family: var(--font-display); font-weight: 800; font-size: 88px; line-height: .92; letter-spacing: .5px; color: var(--ink); margin: 0; }
+    .cv__tag { font-family: var(--font-body); font-size: 14px; line-height: 20px; color: var(--ink-muted); margin: var(--space-2) 0 0; }
+  </style>
+  <svg viewBox="0 0 960 288" aria-hidden="true">
+    <!-- blocks: cork 288×248 (space-6 × 12, bleeding), card 264×168 (space-6 × 11 × 7), stamp 96×96 (space-6 × 4), two string pins r=8 (radius-round)
+         arrangement: a tall cork slab bleeding off the top-right edge, an index card laid across its left edge, a stamp tilted -4deg at its lower right, one red string from the card's pin to a pin on the cork
+         pattern: index-card rules in rule-blue at a space-6 (24px) pitch, one header rule and five hairlines, because the README makes every clue a ruled paper document lying on the folder
+         steps and radii: space-6 pitch and offsets, radius-paper on every block, radius-round on the pins -->
+    <rect class="k-cork r-paper" x="680" y="-8" width="288" height="248"/>
+    <rect class="k-card r-paper" x="520" y="64" width="264" height="168"/>
+    <line class="k-head" x1="520" y1="100" x2="784" y2="100"/>
+    <line class="k-rule" x1="520" y1="124" x2="784" y2="124"/>
+    <line class="k-rule" x1="520" y1="148" x2="784" y2="148"/>
+    <line class="k-rule" x1="520" y1="172" x2="784" y2="172"/>
+    <line class="k-rule" x1="520" y1="196" x2="784" y2="196"/>
+    <line class="k-rule" x1="520" y1="220" x2="784" y2="220"/>
+    <rect class="k-stamp r-paper" x="808" y="160" width="96" height="96" transform="rotate(-4 856 208)"/>
+    <path class="k-string" d="M652 64 Q 766 104 880 40"/>
+    <circle class="k-pin" cx="652" cy="64" r="8"/>
+    <circle class="k-pin" cx="880" cy="40" r="8"/>
+  </svg>
+  <div class="cv__text">
+    <p class="cv__name">Casefile</p>
+    <p class="cv__tag">A case your friends crack together, one clue a day.</p>
+  </div>
+</div>

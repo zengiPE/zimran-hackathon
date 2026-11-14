@@ -1,0 +1,42 @@
+<!-- @dsCard group="Case" height=560 subtitle="Pick one of five suspects, change it until the reveal" -->
+<div class="cf-desk">
+  <form class="cf-stack" onsubmit="return false">
+    <fieldset class="cf-vote">
+      <legend class="cf-heading">Who broke the record player?</legend>
+      <div class="cf-vote__grid">
+        <label class="cf-suspect cf-suspect--fluid cf-suspect--pick">
+          <input class="cf-sr" type="radio" name="vote" value="0" checked>
+          <span class="cf-pin" aria-hidden="true"></span>
+          <span class="cf-suspect__photo" aria-hidden="true">P</span>
+          <span class="cf-suspect__caption"><span class="cf-suspect__name">Priya</span> <span class="cf-suspect__role">The doctor on call all weekend</span> <span class="cf-stamp cf-suspect__verdict cf-verdict--vote">Your vote</span></span>
+        </label>
+        <label class="cf-suspect cf-suspect--fluid cf-suspect--pick">
+          <input class="cf-sr" type="radio" name="vote" value="1">
+          <span class="cf-pin" aria-hidden="true"></span>
+          <span class="cf-suspect__photo" aria-hidden="true">J</span>
+          <span class="cf-suspect__caption"><span class="cf-suspect__name">Jordan</span> <span class="cf-suspect__role">The ex-roommate who never grew up</span> <span class="cf-stamp cf-suspect__verdict cf-verdict--vote">Your vote</span></span>
+        </label>
+        <label class="cf-suspect cf-suspect--fluid cf-suspect--pick">
+          <input class="cf-sr" type="radio" name="vote" value="2">
+          <span class="cf-pin" aria-hidden="true"></span>
+          <span class="cf-suspect__photo" aria-hidden="true">L</span>
+          <span class="cf-suspect__caption"><span class="cf-suspect__name">Leo</span> <span class="cf-suspect__role">The guy who brought his guitar</span> <span class="cf-stamp cf-suspect__verdict cf-verdict--vote">Your vote</span></span>
+        </label>
+        <label class="cf-suspect cf-suspect--fluid cf-suspect--pick">
+          <input class="cf-sr" type="radio" name="vote" value="3">
+          <span class="cf-pin" aria-hidden="true"></span>
+          <span class="cf-suspect__photo" aria-hidden="true">M</span>
+          <span class="cf-suspect__caption"><span class="cf-suspect__name">Maya</span> <span class="cf-suspect__role">The planner who booked the cabin</span> <span class="cf-stamp cf-suspect__verdict cf-verdict--vote">Your vote</span></span>
+        </label>
+        <label class="cf-suspect cf-suspect--fluid cf-suspect--pick">
+          <input class="cf-sr" type="radio" name="vote" value="4">
+          <span class="cf-pin" aria-hidden="true"></span>
+          <span class="cf-suspect__photo" aria-hidden="true">S</span>
+          <span class="cf-suspect__caption"><span class="cf-suspect__name">Sam</span> <span class="cf-suspect__role">The newcomer, someone's plus-one</span> <span class="cf-stamp cf-suspect__verdict cf-verdict--vote">Your vote</span></span>
+        </label>
+      </div>
+    </fieldset>
+    <button class="cf-btn cf-btn--primary cf-btn--block" type="submit">Cast your vote</button>
+    <p class="cf-caption">You can change your vote until the reveal. 2 of 4 have voted.</p>
+  </form>
+</div>

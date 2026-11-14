@@ -1,26 +1,259 @@
 @import "tailwindcss";
+@import "./tokens.css";
+@import "./casefile.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/*
+  Tailwind is only for layout (flex, grid, gaps, widths).
+  Colors here are just links to our tokens, so bg-folder or text-ink work too.
+*/
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-folder: var(--folder);
+  --color-folder-deep: var(--folder-deep);
+  --color-card: var(--card);
+  --color-cork: var(--cork);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-stamp: var(--stamp);
+  --color-string: var(--string);
+  --color-marker: var(--marker);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--folder);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--folder);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 24px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+  The screen is a one-column grid. Without this, a wide child (the Notebook
+  table) stretches the column past the phone width instead of scrolling inside.
+*/
+.cf-screen {
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start; /* short screens: no stretched gaps between sections */
+}
+
+/*
+  Reveal: a real case has ~12 clues, so strings would cross the notes' text.
+  Paper sits above the strings; they show in the gaps and end at the pin.
+*/
+.cf-reveal__clues,
+.cf-reveal__suspects {
+  position: relative;
+  z-index: 1;
+}
+
+/* Vote: five suspects as 3 + 2, the second row centered (like the Reveal). */
+@media (max-width: 639px) {
+  .cf-vote__grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .cf-vote__grid > .cf-suspect {
+    flex: 0 0 calc((100% - 2 * var(--space-3)) / 3);
+  }
+}
+
+/* Links inside paper read as the interactive color. */
+a {
+  color: var(--stamp);
+}
+
+/* Error box: ink on card, never red (design/README.md, Color). */
+.cf-error {
+  background: var(--card);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-paper);
+  padding: var(--space-3) var(--space-4);
+  margin: 0;
+}
+
+/* Paper placeholder while data loads. */
+.cf-skeleton {
+  background: var(--card);
+  border-radius: var(--radius-paper);
+  box-shadow: var(--shadow-paper);
+  opacity: 0.6;
+  min-height: 96px;
+}
+
+/* ---------- App pieces not in the design bundle (built from its tokens) ---------- */
+
+/* Landing headline: the case-title face, bigger. */
+.cf-hero {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 48px;
+  line-height: 0.95;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  text-wrap: balance;
+  margin: 0;
+}
+.cf-lead {
+  font-size: 18px;
+  line-height: 26px;
+  margin: 0;
+}
+
+/* Landing: three steps as paper notes. */
+.cf-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+.cf-steps__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Form groups. */
+.cf-fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+.cf-fieldset > legend {
+  padding: 0;
+  margin-bottom: var(--space-3);
+}
+
+/* A paper card that works as a radio button (theme picker). */
+.cf-choice {
+  display: grid;
+  gap: var(--space-1);
+  background: var(--card);
+  border-radius: var(--radius-paper);
+  box-shadow: var(--shadow-paper);
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  outline: 3px solid transparent;
+  outline-offset: 3px;
+}
+.cf-choice:has(input:checked) {
+  outline-color: var(--stamp);
+}
+.cf-choice:has(input:focus-visible) {
+  outline-color: var(--ink);
+}
+.cf-choice__title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+/* Checkbox with a title and help text (Demo mode). */
+.cf-toggle {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  cursor: pointer;
+  min-height: 48px;
+}
+.cf-toggle input {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  accent-color: var(--stamp);
+}
+.cf-toggle input:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+.cf-toggle__title {
+  display: block;
+  font-weight: 600;
+}
+
+/* Quiet links that are real <a> elements get the focus ring too. */
+a.cf-btn:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+
+/* Host screen (landscape, for a projector). Text on cork only on paper. */
+.cf-host__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+.cf-host__case {
+  flex: 1 1 320px;
+  gap: var(--space-2);
+}
+.cf-host__actions {
+  flex: 0 1 auto;
+  gap: var(--space-2);
+}
+@media (min-width: 1024px) {
+  .cf-invites--host {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* A new clue fades in (160ms, like new posts). */
+.cf-fade {
+  animation: cf-post-in 160ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cf-fade {
+    animation: none;
+  }
+}
+
+/* Receipt wrapper: holds the stamp outside the torn-edge mask. */
+.cf-drop {
+  position: relative;
+  max-width: 300px;
+}
+
+/* Polaroids in one row share a height; keep the photo square instead of stretching it. */
+.cf-suspect {
+  align-content: start;
+}
+
+/* Reveal: keep the counter in view while the strings draw (the board is taller than a phone). */
+.cf-reveal__head {
+  position: sticky;
+  top: var(--space-2);
+  z-index: 2;
+}
+
+/* Paywall plan card: name on the left, price on the right. */
+.cf-choice__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+.cf-choice__price {
+  flex: none;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 24px;
+  line-height: 1;
 }

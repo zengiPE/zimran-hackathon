@@ -1,0 +1,118 @@
+<!-- @dsCard group="Reveal" height=1180 subtitle="Possible worlds melt, strings land, the culprit is stamped" -->
+<div class="cf-cork">
+  <div class="cf-reveal" id="cf-board">
+    <div class="cf-reveal__head">
+      <div class="cf-worlds" aria-live="polite">
+        <span class="cf-label">Possible worlds left</span>
+        <p class="cf-worlds__num" id="cf-worlds" data-total="1728000" data-public="345600">1,728,000</p>
+      </div>
+      <button class="cf-btn cf-btn--secondary cf-btn--sm" type="button" id="cf-replay">Replay</button>
+    </div>
+    <div class="cf-reveal__clues">
+      <div class="cf-note" data-clue data-clears="jordan" data-worlds="276480"><span class="cf-label">Alex · Day 1</span><p class="cf-note__text">Jordan was not seen at 7:00 PM.</p></div>
+      <div class="cf-note" data-clue data-clears="leo" data-worlds="55296"><span class="cf-label">Blake · Day 1</span><p class="cf-note__text">Leo was seen on the Porch.</p></div>
+      <div class="cf-note" data-clue data-clears="sam" data-worlds="9216"><span class="cf-label">Drew · Day 2</span><p class="cf-note__text">Sam was seen in the Loft.</p></div>
+      <div class="cf-note" data-clue data-clears="" data-worlds="1536"><span class="cf-label">Alex · Day 2</span><p class="cf-note__text">The person with the fishing rod was seen at 8:30 PM.</p></div>
+      <div class="cf-note" data-clue data-clears="maya" data-worlds="64"><span class="cf-label">Casey · Day 3</span><p class="cf-note__text">Maya was seen with the fishing rod.</p></div>
+    </div>
+    <div class="cf-reveal__suspects" data-culprit="priya">
+      <figure class="cf-suspect cf-suspect--fluid" style="--tilt:-3deg" data-suspect="priya"><span class="cf-pin" aria-hidden="true"></span><div class="cf-suspect__photo" aria-hidden="true">P</div><figcaption><p class="cf-suspect__name">Priya</p><p class="cf-suspect__role">The doctor on call</p><span class="cf-stamp cf-stamp--red cf-stamp--thunk cf-suspect__verdict cf-verdict--guilty">Guilty</span></figcaption></figure>
+      <figure class="cf-suspect cf-suspect--fluid" style="--tilt:2deg" data-suspect="jordan"><span class="cf-pin" aria-hidden="true"></span><div class="cf-suspect__photo" aria-hidden="true">J</div><figcaption><p class="cf-suspect__name">Jordan</p><p class="cf-suspect__role">The ex-roommate</p><span class="cf-stamp cf-stamp--muted cf-stamp--thunk cf-suspect__verdict cf-verdict--cleared">Cleared</span></figcaption></figure>
+      <figure class="cf-suspect cf-suspect--fluid" style="--tilt:-1deg" data-suspect="leo"><span class="cf-pin" aria-hidden="true"></span><div class="cf-suspect__photo" aria-hidden="true">L</div><figcaption><p class="cf-suspect__name">Leo</p><p class="cf-suspect__role">The guitar guy</p><span class="cf-stamp cf-stamp--muted cf-stamp--thunk cf-suspect__verdict cf-verdict--cleared">Cleared</span></figcaption></figure>
+      <figure class="cf-suspect cf-suspect--fluid" style="--tilt:3deg" data-suspect="maya"><span class="cf-pin" aria-hidden="true"></span><div class="cf-suspect__photo" aria-hidden="true">M</div><figcaption><p class="cf-suspect__name">Maya</p><p class="cf-suspect__role">The planner</p><span class="cf-stamp cf-stamp--muted cf-stamp--thunk cf-suspect__verdict cf-verdict--cleared">Cleared</span></figcaption></figure>
+      <figure class="cf-suspect cf-suspect--fluid" style="--tilt:-2deg" data-suspect="sam"><span class="cf-pin" aria-hidden="true"></span><div class="cf-suspect__photo" aria-hidden="true">S</div><figcaption><p class="cf-suspect__name">Sam</p><p class="cf-suspect__role">The plus-one</p><span class="cf-stamp cf-stamp--muted cf-stamp--thunk cf-suspect__verdict cf-verdict--cleared">Cleared</span></figcaption></figure>
+    </div>
+    <div class="cf-verdict" id="cf-verdict" hidden>
+      <p class="cf-verdict__line">Priya broke the record player.</p>
+      <p class="cf-caption">Sunroom · 7:00 PM · a guitar. 64 possible worlds are left, and in every one of them it's Priya.</p>
+      <ul class="cf-votes" aria-label="Votes">
+        <li><span><b>Alex</b> voted Priya</span><span class="cf-stamp cf-stamp--straight">Correct</span></li>
+        <li><span><b>Blake</b> voted Priya</span><span class="cf-stamp cf-stamp--straight">Correct</span></li>
+        <li><span><b>Casey</b> voted Maya</span><span class="cf-stamp cf-stamp--muted cf-stamp--straight">Missed</span></li>
+        <li><span><b>Drew</b> voted Priya</span><span class="cf-stamp cf-stamp--straight">Correct</span></li>
+      </ul>
+      <button class="cf-btn cf-btn--primary" type="button">Open the next case</button>
+    </div>
+    <svg class="cf-reveal__strings" id="cf-strings" aria-hidden="true"></svg>
+  </div>
+</div>
+<script>
+(function () {
+  var NS = 'http://www.w3.org/2000/svg';
+  var board = document.getElementById('cf-board');
+  var svg = document.getElementById('cf-strings');
+  var verdict = document.getElementById('cf-verdict');
+  var num = document.getElementById('cf-worlds');
+  var culpritId = board.querySelector('[data-culprit]').getAttribute('data-culprit');
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var TOTAL = +num.getAttribute('data-total'), PUBLIC = +num.getAttribute('data-public');
+  var timers = [], raf = 0, cur = TOTAL;
+  function fmt(n) { return n.toLocaleString('en-US'); }
+  function tween(to, ms) {
+    cancelAnimationFrame(raf);
+    var from = cur; cur = to;
+    if (ms <= 0) { num.textContent = fmt(to); return; }
+    var t0 = performance.now();
+    (function f(now) {
+      var p = Math.min(1, (now - t0) / ms), e = 1 - Math.pow(1 - p, 3);
+      num.textContent = fmt(Math.round(from + (to - from) * e));
+      if (p < 1) raf = requestAnimationFrame(f);
+    })(t0);
+  }
+  function pt(el, where) {
+    var b = board.getBoundingClientRect(), r = el.getBoundingClientRect();
+    return { x: r.left - b.left + r.width / 2, y: where === 'bottom' ? r.bottom - b.top - 4 : r.top - b.top };
+  }
+  function suspect(id) { return board.querySelector('[data-suspect="' + id + '"]'); }
+  function reset() {
+    timers.forEach(clearTimeout); timers = []; cancelAnimationFrame(raf);
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    board.querySelectorAll('[data-suspect]').forEach(function (s) { s.classList.remove('is-cleared', 'is-guilty'); });
+    verdict.hidden = true; cur = TOTAL; num.textContent = fmt(TOTAL);
+  }
+  function string(note, ms) {
+    var a = pt(note, 'bottom'), z = pt(suspect(culpritId), 'top');
+    var d = 'M' + a.x + ' ' + a.y + ' Q' + ((a.x + z.x) / 2) + ' ' + ((a.y + z.y) / 2 + 36) + ' ' + z.x + ' ' + z.y;
+    ['cf-string-under', 'cf-string'].forEach(function (cls) {
+      var p = document.createElementNS(NS, 'path');
+      p.setAttribute('d', d); p.setAttribute('class', cls);
+      svg.appendChild(p);
+      if (ms > 0) {
+        var len = p.getTotalLength();
+        p.style.strokeDasharray = len; p.style.strokeDashoffset = len;
+        p.getBoundingClientRect();
+        p.style.transition = 'stroke-dashoffset ' + ms + 'ms ease-in-out';
+        p.style.strokeDashoffset = '0';
+      }
+    });
+    var k = document.createElementNS(NS, 'circle');
+    k.setAttribute('cx', a.x); k.setAttribute('cy', a.y); k.setAttribute('r', 4); k.setAttribute('class', 'cf-knot');
+    svg.appendChild(k);
+  }
+  function clearFor(note) {
+    (note.getAttribute('data-clears') || '').split(' ').filter(Boolean).forEach(function (id) { suspect(id).classList.add('is-cleared'); });
+  }
+  function finish() { suspect(culpritId).classList.add('is-guilty'); verdict.hidden = false; }
+  function play(animate) {
+    reset();
+    var notes = [].slice.call(board.querySelectorAll('[data-clue]'));
+    if (!animate) {
+      notes.forEach(function (n) { string(n, 0); clearFor(n); });
+      tween(+notes[notes.length - 1].getAttribute('data-worlds'), 0); finish(); return;
+    }
+    var STEP = Math.min(850, 8000 / notes.length), DRAW = Math.round(STEP * 0.7), t = 600;
+    tween(PUBLIC, 500);
+    notes.forEach(function (n) {
+      timers.push(setTimeout(function () { string(n, DRAW); tween(+n.getAttribute('data-worlds'), DRAW); }, t));
+      timers.push(setTimeout(function () { clearFor(n); }, t + DRAW));
+      t += STEP;
+    });
+    timers.push(setTimeout(finish, t - (STEP - DRAW) + 400));
+  }
+  document.getElementById('cf-replay').addEventListener('click', function () { play(!reduce); });
+  var ready = document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
+  ready.then(function () { play(!reduce); });
+  var rt;
+  window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { play(false); }, 150); });
+})();
+</script>

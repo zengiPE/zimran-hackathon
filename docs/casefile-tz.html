@@ -1,0 +1,361 @@
+<title>Техзадание Casefile</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column with a sticky section index on wide screens; evidence-tag amber marks owners and deadlines */
+:root{
+  --bg:#f6f7f9; --surface:#ffffff; --fg:#1b2230; --muted:#5b6578; --line:#dde2ea;
+  --ink:#24365c; --accent:#c98a12; --accent-soft:#fbf1dc;
+  --p1:#2f6fb5; --p2:#2f8a63; --p3:#9a4fb0;
+  --code-bg:#eef1f6;
+  --display:"Space Grotesk",system-ui,sans-serif;
+  --body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121620; --surface:#1a2030; --fg:#e4e8f0; --muted:#9aa4b8; --line:#2c3446;
+  --ink:#a9c0ec; --accent:#e5ac3d; --accent-soft:#33291a;
+  --p1:#6fa6e6; --p2:#5fc196; --p3:#c98ae0; --code-bg:#20283a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121620; --surface:#1a2030; --fg:#e4e8f0; --muted:#9aa4b8; --line:#2c3446;
+  --ink:#a9c0ec; --accent:#e5ac3d; --accent-soft:#33291a;
+  --p1:#6fa6e6; --p2:#5fc196; --p3:#c98ae0; --code-bg:#20283a; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15.5px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 64px}
+.wrap{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:220px minmax(0,1fr);gap:48px}
+nav.toc{position:sticky;top:calc(env(safe-area-inset-top,0px) + 24px);align-self:start;font-size:13.5px}
+nav.toc .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+nav.toc a{display:block;color:var(--muted);text-decoration:none;padding:4px 0 4px 10px;border-left:2px solid var(--line)}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--fg);border-left-color:var(--accent);outline:none}
+main{min-width:0}
+header.top{border-bottom:1px solid var(--line);padding-bottom:24px;margin-bottom:8px}
+.tag{display:inline-flex;gap:8px;align-items:center;font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;
+  background:var(--accent-soft);color:var(--fg);border:1px solid var(--accent);border-radius:3px;padding:3px 8px}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(28px,4vw,40px);line-height:1.15;margin:14px 0 10px;text-wrap:balance;color:var(--ink)}
+.lead{font-size:17px;color:var(--fg);max-width:68ch;margin:0}
+.meta{display:flex;flex-wrap:wrap;gap:8px 24px;margin-top:16px;font-size:13.5px;color:var(--muted)}
+.meta b{color:var(--fg);font-weight:600}
+section{padding-top:40px}
+h2{font-family:var(--display);font-weight:700;font-size:24px;margin:0 0 12px;color:var(--ink);text-wrap:balance}
+h3{font-family:var(--display);font-weight:500;font-size:18px;margin:24px 0 8px}
+p,li{max-width:72ch}
+ul,ol{padding-left:22px;margin:8px 0}
+li{margin:4px 0}
+code,pre{font-family:var(--mono);font-size:13px}
+code{background:var(--code-bg);padding:1px 5px;border-radius:3px}
+pre{background:var(--code-bg);padding:14px 16px;border-radius:6px;overflow-x:auto;line-height:1.5;margin:12px 0}
+pre code{background:none;padding:0}
+.tbl{overflow-x:auto;margin:12px 0;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--mono);font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:500;background:var(--bg)}
+tr:last-child td{border-bottom:none}
+td.num{font-variant-numeric:tabular-nums;white-space:nowrap;font-family:var(--mono);font-size:13px}
+.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:12px 16px;border-radius:0 6px 6px 0;margin:16px 0;max-width:72ch}
+.roles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:16px}
+.role{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px 18px;min-width:0;border-top:4px solid var(--c)}
+.role h3{margin:0 0 4px;font-size:17px}
+.role .who{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--c)}
+.role ul{padding-left:18px;font-size:14px}
+.role .done{font-size:13.5px;color:var(--muted);margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
+.p1{--c:var(--p1)} .p2{--c:var(--p2)} .p3{--c:var(--p3)}
+.chip{display:inline-block;font-family:var(--mono);font-size:11px;padding:1px 6px;border-radius:3px;color:var(--surface);background:var(--c);vertical-align:1px;white-space:nowrap}
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0;font-size:14px}
+.flow span.s{background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:6px 10px}
+.flow span.a{color:var(--muted)}
+.cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
+.cols>div{min-width:0}
+footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+@media (max-width:900px){.wrap{grid-template-columns:minmax(0,1fr)}nav.toc{display:none}.roles,.cols{grid-template-columns:minmax(0,1fr)}}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+html{scroll-behavior:smooth}
+</style>
+
+<div class="wrap">
+<nav class="toc" aria-label="Разделы">
+  <div class="lbl">Разделы</div>
+  <a href="#summary">Коротко</a>
+  <a href="#flow">Продукт и экраны</a>
+  <a href="#engine">Ядро: движок дел</a>
+  <a href="#stack">Стек и API</a>
+  <a href="#roles">Роли на троих</a>
+  <a href="#timeline">План на 24 часа</a>
+  <a href="#demo">Сценарий демо</a>
+  <a href="#deck">Презентация</a>
+  <a href="#criteria">Критерии жюри</a>
+  <a href="#risks">Риски и запасные планы</a>
+  <a href="#cut">Не делаем</a>
+</nav>
+
+<main>
+<header class="top">
+  <span class="tag">Хакатон · 24 часа · трек Entertainment</span>
+  <h1>Casefile: детектив, который компания друзей раскрывает за неделю</h1>
+  <p class="lead">Веб-продукт для взрослых 25–45 лет, которые почти перестали видеться с друзьями. Каждый день у каждого игрока открывается своя улика, в одиночку дело не решить, в воскресенье общее голосование и развязка. Логику дела строит солвер, ИИ только пишет текст.</p>
+  <div class="meta">
+    <span>Команда: <b>3 человека</b></span>
+    <span>Платформа: <b>web, mobile-first</b></span>
+    <span>Интерфейс продукта: <b>на английском</b> (аудитория США)</span>
+  </div>
+</header>
+
+<section id="summary">
+<h2>Коротко</h2>
+<p><b>Боль.</b> 7 из 10 американцев говорят, что с возрастом поддерживать дружбу труднее, а за 10 лет человек теряет около 9 дружб (Talker Research, 2025). Главный барьер — нехватка времени, его называют 29,7% (American Friendship Project). Собраться всем в один вечер невозможно.</p>
+<p><b>Решение.</b> Асинхронная игра: 5 минут в день, когда удобно, улики у всех разные, поэтому общение неизбежно.</p>
+<p><b>Деньги.</b> Первое дело бесплатно. Дальше $12 за дело на всю компанию или $7.99 в месяц для организатора (новое дело каждую неделю). Цены взяты из панели: медиана «выгодно» $7, «уже дорого» $15. Готовность платить подтверждают подписки на детективные коробки (Hunt A Killer, около $30 в месяц).</p>
+<div class="note"><b>Что должно работать к питчу:</b> создать дело → пригласить по QR → у 3–4 игроков разные улики → смена дня → голосование → развязка с доказательством, почему ответ единственный. Всё на задеплоенном URL, с тестами движка в репо.</div>
+</section>
+
+<section id="flow">
+<h2>Продукт и экраны</h2>
+<div class="flow">
+  <span class="s">Landing</span><span class="a">→</span>
+  <span class="s">Create case</span><span class="a">→</span>
+  <span class="s">Invite (QR, ссылки)</span><span class="a">→</span>
+  <span class="s">Player: улика дня</span><span class="a">→</span>
+  <span class="s">Vote</span><span class="a">→</span>
+  <span class="s">Reveal</span><span class="a">→</span>
+  <span class="s">Paywall: следующее дело</span>
+</div>
+<div class="tbl"><table>
+<thead><tr><th>Экран</th><th>Что делает</th><th>Ключевые детали</th></tr></thead>
+<tbody>
+<tr><td>Landing</td><td>Объясняет продукт за 5 секунд, кнопка «Start a case»</td><td>Заголовок про друзей, а не про убийство. Три шага в картинках.</td></tr>
+<tr><td>Create case</td><td>Организатор выбирает тему, вписывает имена 3–6 друзей</td><td>2 темы: <i>The Lake House Weekend</i>, <i>The Office Holiday Party</i>. Переключатель «Demo mode» (день = 1 минута или ручная кнопка).</td></tr>
+<tr><td>Invite</td><td>Личная ссылка и QR для каждого игрока</td><td>Без регистрации: токен в ссылке. Кнопка «Copy link», статус «joined / not yet».</td></tr>
+<tr><td>Player</td><td>Улика дня, архив своих улик, общая доска версий, таймер до следующей улики</td><td>Улика в виде «документа» (показание, чек, сообщение) и под ней строка структурированного факта. Доска обновляется опросом раз в 5 секунд.</td></tr>
+<tr><td>Host screen</td><td>Экран для проектора на демо: кто зашёл, кто открыл улику, кнопка «Next day»</td><td>Нужен прежде всего для демо, но годится и организатору.</td></tr>
+<tr><td>Vote</td><td>Выбор подозреваемого (и мотива, если успеем)</td><td>Открывается в последний день. Видно, кто уже проголосовал.</td></tr>
+<tr><td>Reveal</td><td>Ответ, как каждая улика сузила круг, кто угадал</td><td>Цепочка доказательства: «эти 4 улики от 4 разных людей → остаётся только один». Это главный вау-момент демо.</td></tr>
+<tr><td>Paywall</td><td>Следующее дело: $12 разово или $7.99/мес</td><td>Stripe Checkout в тестовом режиме. Счётчик «ваша компания раскрыла N дел».</td></tr>
+</tbody></table></div>
+<h3>Правило выбывшего игрока</h3>
+<p>Если игрок не открыл улику за 24 часа (в демо-режиме за 1 минуту), она становится видна всем. Так дело остаётся решаемым. Это прямой ответ на главное возражение панели: «друзья отвалятся к середине недели».</p>
+</section>
+
+<section id="engine">
+<h2>Ядро: движок дел</h2>
+<p>Это то, за что жюри даёт 40%: настоящая логика, а не хардкод. Движок полностью детерминирован по <code>seed</code> и покрыт тестами.</p>
+<h3>Модель дела</h3>
+<ul>
+  <li>Сетка как в задаче Эйнштейна: 4–5 подозреваемых × комнаты × временные слоты × предметы. Каждое значение у ровно одного подозреваемого.</li>
+  <li>Публичная завязка известна всем: «Ваза разбита в библиотеке в 20:00». Виновный — тот, кто был в этой комнате в это время.</li>
+  <li>Атомарные факты-улики: «X не был в кухне», «тот, кто был в саду, пришёл раньше Y», «у Z был фонарик», «X и Y были в одной комнате», «либо A, либо B был в 19:00 в холле».</li>
+</ul>
+<h3>Алгоритм</h3>
+<ol>
+  <li><b>Истина.</b> По seed генерируем случайное полное назначение.</li>
+  <li><b>Кандидаты.</b> Генерируем все истинные атомарные факты и перемешиваем.</li>
+  <li><b>Отбор.</b> Жадно добавляем факты, пока солвер не найдёт ровно одно решение для виновного. Солвер: OR-Tools CP-SAT или python-constraint, считаем решения до 2.</li>
+  <li><b>Раздача.</b> Делим факты на P игроков × D дней (по одному в день) так, чтобы выполнялись проверки ниже. Если не вышло, пробуем другое разбиение или другой seed.</li>
+  <li><b>Объяснение.</b> Для развязки строим цепочку: какой факт какие варианты отсёк. Это экран Reveal.</li>
+</ol>
+<h3>Свойства, которые проверяют тесты</h3>
+<div class="tbl"><table>
+<thead><tr><th>Свойство</th><th>Как проверяем</th></tr></thead>
+<tbody>
+<tr><td>Единственность</td><td>Все улики вместе → ровно 1 решение для виновного</td></tr>
+<tr><td>В одиночку не решить</td><td>Улики любого одного игрока → ≥2 возможных виновных</td></tr>
+<tr><td>Каждый нужен</td><td>Без улик любого одного игрока → решение снова не единственное (поэтому и работает правило выбывшего)</td></tr>
+<tr><td>Нарастание</td><td>Число возможных виновных по дням не растёт и становится 1 только в последний день</td></tr>
+<tr><td>Детерминизм</td><td>Один seed → одно и то же дело</td></tr>
+<tr><td>Скорость</td><td>Генерация дела &lt; 2 с на ноутбуке (5 подозреваемых, 4 игрока, 5 дней)</td></tr>
+</tbody></table></div>
+<p>Тест-набор прогоняет 300 случайных seed. Скриншот зелёного прогона идёт на слайд.</p>
+<h3>Текст поверх логики</h3>
+<p>Claude (claude-sonnet-5-5) превращает каждый атомарный факт в короткий текст в стиле темы: показание, чек из бара, сообщение в чате. Правила:</p>
+<ul>
+  <li>LLM никогда не решает, что правда. Структурированный факт всегда показан под текстом.</li>
+  <li>Тексты генерируются при создании дела, а не на лету.</li>
+  <li>Если LLM недоступна или ответ не прошёл проверку (имена и значения из факта должны встречаться в тексте), берём шаблонный текст.</li>
+</ul>
+</section>
+
+<section id="stack">
+<h2>Стек и API</h2>
+<div class="cols">
+<div>
+<h3>Стек</h3>
+<ul>
+  <li><code>web/</code>: Next.js (App Router), TypeScript, Tailwind, деплой на Vercel</li>
+  <li><code>api/</code>: FastAPI, Python 3.11, OR-Tools, SQLModel + SQLite (или Postgres на Supabase), деплой на Railway или Fly</li>
+  <li>Обновления опросом раз в 5 с, без WebSocket</li>
+  <li>Stripe Checkout (test mode), Claude API для текста</li>
+  <li>Простой лог событий: created, joined, clue_opened, voted, paid</li>
+</ul>
+</div>
+<div>
+<h3>Структура движка</h3>
+<pre><code>api/engine/
+  model.py      # сущности, факты
+  generate.py   # истина + кандидаты
+  solver.py     # count_solutions(facts, limit=2)
+  partition.py  # раздача по игрокам и дням
+  explain.py    # цепочка для Reveal
+api/tests/test_engine.py  # 300 seed</code></pre>
+</div>
+</div>
+<h3>API-контракт (фиксируем в первый час)</h3>
+<pre><code>POST /api/cases            {theme, players:[name], demo:bool, seed?}
+  → {case_id, host_token, invites:[{name, token, url}]}
+GET  /api/cases/{id}/me?token=…
+  → {title, intro, day, days_total, phase: "play"|"vote"|"reveal",
+     my_clues:[{day, text, fact}], shared_clues:[…],
+     board:[{author, text, ts}], players:[{name, joined, opened_today}]}
+POST /api/cases/{id}/board     {token, text}
+POST /api/cases/{id}/advance   {host_token}            # демо-режим
+POST /api/cases/{id}/vote      {token, suspect}
+GET  /api/cases/{id}/reveal    → {culprit, chain:[{fact, owner, eliminated:[…]}], votes}
+POST /api/checkout             {case_id} → {url}
+POST /api/stripe/webhook</code></pre>
+<p>До готовности бэкенда фронтенд работает на моках с этой же формой JSON (<code>web/mocks/*.json</code>).</p>
+</section>
+
+<section id="roles">
+<h2>Роли на троих</h2>
+<div class="roles">
+  <div class="role p1">
+    <div class="who">Человек 1</div>
+    <h3>Движок и API</h3>
+    <ul>
+      <li>Модель, генератор, солвер, раздача, объяснение</li>
+      <li>pytest на 300 seed, все свойства из таблицы</li>
+      <li>FastAPI-эндпоинты, БД, токены в ссылках</li>
+      <li>Правило выбывшего, demo-режим (advance, ускоренный день)</li>
+      <li>Банк из 20 готовых дел по проверенным seed на случай отказа</li>
+      <li>README: как запустить, как устроен движок</li>
+    </ul>
+    <div class="done"><b>Готово, когда:</b> <code>pytest</code> зелёный, <code>POST /cases</code> отдаёт решаемое дело за &lt;2 с, API задеплоен.</div>
+  </div>
+  <div class="role p2">
+    <div class="who">Человек 2</div>
+    <h3>Фронтенд и UX</h3>
+    <ul>
+      <li>Landing, Create, Invite (QR), Player, Vote, Reveal, Paywall</li>
+      <li>Host screen для проектора</li>
+      <li>Сначала мок-данные, потом подключение к API, опрос раз в 5 с</li>
+      <li>Mobile-first: судьи откроют с телефона</li>
+      <li>Анимация цепочки на Reveal (вау-момент)</li>
+      <li>Пустые, загрузочные и ошибочные состояния</li>
+    </ul>
+    <div class="done"><b>Готово, когда:</b> полный путь проходится на трёх телефонах по задеплоенному URL без консольных ошибок.</div>
+  </div>
+  <div class="role p3">
+    <div class="who">Человек 3</div>
+    <h3>История, деньги, питч</h3>
+    <ul>
+      <li>2 темы: персонажи, завязка, стиль улик</li>
+      <li>Промпт нарратива, проверка текста, шаблоны-заглушки</li>
+      <li>Stripe test mode, paywall, лог событий</li>
+      <li>Деплой обоих сервисов, домен, переменные окружения</li>
+      <li>Презентация, сценарий демо, репетиции, запасное видео</li>
+      <li>Распечатанный QR и 4 запасных телефона с открытыми ссылками</li>
+    </ul>
+    <div class="done"><b>Готово, когда:</b> оплата проходит тестовой картой, презентация готова, демо отрепетировано дважды по таймеру.</div>
+  </div>
+</div>
+</section>
+
+<section id="timeline">
+<h2>План на 24 часа</h2>
+<div class="tbl"><table>
+<thead><tr><th>Часы</th><th><span class="chip p1">Ч1</span> Движок</th><th><span class="chip p2">Ч2</span> Фронт</th><th><span class="chip p3">Ч3</span> История и питч</th></tr></thead>
+<tbody>
+<tr><td class="num">0–1</td><td colspan="3">Вместе: фиксируем API-контракт и моки, создаём репо, Ч3 деплоит «hello world» обоих сервисов</td></tr>
+<tr><td class="num">1–6</td><td>Модель, генератор, солвер, первые тесты</td><td>Все экраны на моках</td><td>Темы, промпт нарратива, Stripe test, CI/деплой</td></tr>
+<tr><td class="num">6</td><td colspan="3"><b>Чекпоинт 1:</b> движок выдаёт решаемое дело, фронт рендерит мок</td></tr>
+<tr><td class="num">6–12</td><td>Раздача по игрокам, API, БД, правило выбывшего</td><td>Подключение к API, опрос, Vote и Reveal</td><td>Нарратив в создании дела, заглушки, paywall</td></tr>
+<tr><td class="num">12</td><td colspan="3"><b>Интеграция:</b> полный путь на задеплоенном URL с тремя телефонами</td></tr>
+<tr><td class="num">12–16</td><td>Объяснение для Reveal, банк дел, 300 seed в тестах</td><td>Host screen, анимация Reveal, мобильная полировка</td><td>Презентация v1, сценарий демо, слайд с данными</td></tr>
+<tr><td class="num">16</td><td colspan="3"><b>Feature freeze.</b> Дальше только баги и полировка</td></tr>
+<tr><td class="num">16–20</td><td>Баги, README, чистка репо</td><td>Баги, пустые состояния, тексты</td><td>Запись запасного видео демо, финальная презентация</td></tr>
+<tr><td class="num">20–22</td><td colspan="3">Две полные репетиции по таймеру, правим только блокеры</td></tr>
+<tr><td class="num">22–24</td><td colspan="3">Запас. Спим по очереди, если успели</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="demo">
+<h2>Сценарий демо</h2>
+<p>Рассчитан на 4 минуты, легко ужать до 3. Демо-дело заранее выбрано: «лёгкое», 4 подозреваемых, 4 игрока, 3 дня, проверено десятки раз, тексты сгенерированы заранее.</p>
+<div class="tbl"><table>
+<thead><tr><th>Время</th><th>Что происходит</th><th>Кто</th></tr></thead>
+<tbody>
+<tr><td class="num">0:00–0:30</td><td>Вопрос в зал: «Когда вы последний раз видели всю свою компанию друзей?» Две цифры: 7 из 10 и 9 потерянных дружб за 10 лет.</td><td><span class="chip p3">Ч3</span></td></tr>
+<tr><td class="num">0:30–0:45</td><td>Одна фраза о продукте: 5 минут в день, у каждого своя улика, в воскресенье развязка.</td><td><span class="chip p3">Ч3</span></td></tr>
+<tr><td class="num">0:45–2:45</td><td>Живое демо. QR на экране, 4 судьи заходят с телефонов (запасные телефоны у команды наготове). Host screen показывает «4/4 joined». День 1: каждый читает свою улику вслух, они разные. Жмём «Next day» дважды. 40 секунд обсуждения, голосование, Reveal с анимацией цепочки.</td><td><span class="chip p2">Ч2</span> ведёт экран</td></tr>
+<tr><td class="num">2:45–3:30</td><td>Под капотом: солвер гарантирует один ответ, никто не решит в одиночку, каждый нужен. Скриншот 300 зелёных тестов. ИИ пишет только текст.</td><td><span class="chip p1">Ч1</span></td></tr>
+<tr><td class="num">3:30–4:15</td><td>Почему заплатят и вернутся: первое дело бесплатно, $12 за дело или $7.99/мес, новое дело каждую неделю. Вирусный цикл: каждое дело приводит 3–5 новых людей, поэтому привлечение почти бесплатное. Hunt A Killer как доказательство спроса.</td><td><span class="chip p3">Ч3</span></td></tr>
+<tr><td class="num">4:15–4:30</td><td>Финал: «Соберите свою компанию: QR на экране, первое дело бесплатно».</td><td><span class="chip p3">Ч3</span></td></tr>
+</tbody></table></div>
+<h3>Подготовка к демо</h3>
+<ul>
+  <li>Заранее договориться с 4 судьями-добровольцами или посадить на эти роли людей из зала.</li>
+  <li>4 запасных телефона или вкладки с уже открытыми ссылками игроков.</li>
+  <li>Свой мобильный интернет как запасной канал, локальный запуск на ноутбуке как запасной сервер.</li>
+  <li>Запасное видео всего демо (2 минуты), открытое во вкладке.</li>
+  <li>Если судьи застряли: кнопка «Hint» открывает одну улику всем.</li>
+</ul>
+</section>
+
+<section id="deck">
+<h2>Презентация</h2>
+<div class="tbl"><table>
+<thead><tr><th>Слайд</th><th>Содержание</th></tr></thead>
+<tbody>
+<tr><td>Обложка</td><td>Casefile + одна фраза. QR для зала.</td></tr>
+<tr><td>Проблема</td><td>Взрослые теряют друзей из-за нехватки времени. Цифры Talker Research и American Friendship Project.</td></tr>
+<tr><td>Пользователь</td><td>Организатор компании: 25–45 лет, работа и дети, групповой чат «умер». Его фраза из панели.</td></tr>
+<tr><td>Продукт</td><td>Три шага: создать дело, улика каждый день, развязка в воскресенье. Скриншоты Player и Reveal.</td></tr>
+<tr><td>Живое демо</td><td>Переход к живому демо.</td></tr>
+<tr><td>Как это работает</td><td>Схема: seed → истина → отбор фактов солвером → раздача → текст от ИИ. Свойства движка и скриншот тестов.</td></tr>
+<tr><td>Удержание и деньги</td><td>Первое бесплатно, $12 за дело, $7.99/мес. Еженедельная серия дел. Вирусный цикл, LTV &gt; CAC.</td></tr>
+<tr><td>Рынок и конкуренты</td><td>Hunt A Killer (физические коробки), ИИ-детективы на один вечер (Turtle Noir, MystNight). Наше отличие: неделя, свои улики, доказуемая решаемость.</td></tr>
+<tr><td>Что мы проверили</td><td>Панель из 20 симулированных покупателей: 15% купили, главное возражение «друзья отвалятся», и как мы его закрыли правилом выбывшего. Честно подписать, что это симуляция.</td></tr>
+<tr><td>Команда и что дальше</td><td>Кто что делал, следующие темы, уведомления по SMS и почте.</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="criteria">
+<h2>Критерии жюри</h2>
+<div class="tbl"><table>
+<thead><tr><th>Критерий</th><th>Вес</th><th>Чем закрываем</th></tr></thead>
+<tbody>
+<tr><td>Product &amp; Engineering</td><td class="num">40%</td><td>Задеплоенный путь от начала до конца, солвер вместо хардкода, 300 тестов, чистый репо с README</td></tr>
+<tr><td>Value &amp; Retention</td><td class="num">20%</td><td>Новая улика каждый день, новое дело каждую неделю, давление группы, счётчик раскрытых дел</td></tr>
+<tr><td>Problem &amp; User</td><td class="num">15%</td><td>Конкретный пользователь (организатор компании) и подтверждённая боль с цифрами</td></tr>
+<tr><td>Business Potential</td><td class="num">15%</td><td>Подписка, вирусный рост, пример Hunt A Killer, дешёвое привлечение</td></tr>
+<tr><td>Originality</td><td class="num">10%</td><td>Асинхронно в течение недели, свои улики у каждого, решаемость доказана солвером</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="risks">
+<h2>Риски и запасные планы</h2>
+<div class="tbl"><table>
+<thead><tr><th>Риск</th><th>Что делаем</th></tr></thead>
+<tbody>
+<tr><td>Генератор не находит раздачу или работает медленно</td><td>Банк из 20 заранее проверенных seed. Перебор seed с таймаутом.</td></tr>
+<tr><td>ИИ пишет текст, противоречащий факту</td><td>Факт всегда показан под текстом, проверка имён и значений, шаблонная заглушка.</td></tr>
+<tr><td>Судьи не успевают решить</td><td>Лёгкое демо-дело, кнопка «Hint», ведущий подсказывает.</td></tr>
+<tr><td>Падает интернет на площадке</td><td>Свой мобильный интернет, локальный запуск, запасное видео.</td></tr>
+<tr><td>Не успеваем с фронтом</td><td>Режем Paywall до кнопки со Stripe-ссылкой, Host screen до списка игроков.</td></tr>
+<tr><td>Stripe webhook не доходит</td><td>В тестовом режиме отмечаем оплату по success-редиректу.</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="cut">
+<h2>Не делаем</h2>
+<ul>
+  <li>Регистрацию и пароли (вход по токену в ссылке)</li>
+  <li>Чат в реальном времени (доска версий с опросом раз в 5 с)</li>
+  <li>Мобильные приложения</li>
+  <li>Больше двух тем и пользовательские дела</li>
+  <li>SMS и почтовые напоминания (упоминаем как следующий шаг; если останется время, одно письмо «новая улика» через Resend)</li>
+</ul>
+</section>
+
+<footer>Цифры о дружбе: Talker Research (август 2025), Talkspace (апрель 2026), American Friendship Project (2025). Данные о покупателях — симуляция founder-skill на 20 агентах, не реальное исследование.</footer>
+</main>
+</div>

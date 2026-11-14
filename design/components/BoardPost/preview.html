@@ -1,0 +1,33 @@
+<!-- @dsCard group="Case" height=560 subtitle="The theory board: friends' posts, your post, the composer" -->
+<div class="cf-desk">
+  <section class="cf-board" aria-label="Theory board">
+    <div class="cf-board__head"><h2 class="cf-heading">The board</h2><span class="cf-caption">3 posts today</span></div>
+    <article class="cf-post">
+      <span class="cf-avatar" aria-hidden="true">B</span>
+      <div class="cf-post__body">
+        <p class="cf-post__head"><span class="cf-post__name">Blake</span><span>9:41 AM</span></p>
+        <p class="cf-post__text">Mine says Leo was out on the porch. So not him in the Sunroom, right?</p>
+      </div>
+    </article>
+    <article class="cf-post">
+      <span class="cf-avatar" aria-hidden="true">C</span>
+      <div class="cf-post__body">
+        <p class="cf-post__head"><span class="cf-post__name">Casey</span><span>9:44 AM</span></p>
+        <p class="cf-post__text">Careful, we don't know WHEN he was on the porch. Anyone have times?</p>
+      </div>
+    </article>
+    <article class="cf-post cf-post--mine">
+      <span class="cf-avatar" aria-hidden="true">A</span>
+      <div class="cf-post__body">
+        <p class="cf-post__head"><span class="cf-post__name">You</span><span>9:47 AM</span></p>
+        <p class="cf-post__text">Jordan wasn't seen at 7:00 at all. Crossing him off.</p>
+      </div>
+    </article>
+    <form class="cf-composer" onsubmit="return false">
+      <label class="cf-sr" for="board-post">Write a theory</label>
+      <input class="cf-input" id="board-post" type="text" maxlength="280" placeholder="Write a theory">
+      <span class="cf-caption">0 / 280</span>
+      <button class="cf-btn cf-btn--primary" type="submit">Post</button>
+    </form>
+  </section>
+</div>

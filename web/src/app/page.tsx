@@ -1,34 +1,60 @@
-"use client";
+import { FileSearch, FolderPlus, Vote } from "lucide-react";
+import { ButtonLink } from "@/components/cf/Button";
+import { CreateCase } from "./CreateCase";
+import { TryDemo } from "./TryDemo";
 
-import { useEffect, useState } from "react";
+const STEPS = [
+  {
+    icon: FolderPlus,
+    title: "Start a case",
+    text: "Pick a story and add 3 to 6 friends. Everyone gets a private link.",
+  },
+  {
+    icon: FileSearch,
+    title: "One clue a day",
+    text: "Each of you gets a different clue. Nobody can solve it alone, so talk it out on the board.",
+  },
+  {
+    icon: Vote,
+    title: "Vote, then the reveal",
+    text: "After the last day, vote. Then watch the possible worlds melt down to one.",
+  },
+];
 
-type Health = { status: string; service: string };
-
+// Landing: what Casefile is in five seconds, then the Create case form.
 export default function Home() {
-  const [health, setHealth] = useState<Health | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Same-origin: next.config.ts rewrites /api/* to the FastAPI backend
-    fetch("/api/health")
-      .then((r) => r.json())
-      .then(setHealth)
-      .catch((e) => setError(String(e)));
-  }, []);
-
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-4 p-8">
-      <h1 className="text-3xl font-semibold">Zimran Hackathon</h1>
-      <p className="text-zinc-500">
-        API:{" "}
-        {health ? (
-          <span className="text-green-600">{health.status}</span>
-        ) : error ? (
-          <span className="text-red-600">недоступен</span>
-        ) : (
-          "проверяю…"
-        )}
-      </p>
+    <main className="cf-desk cf-screen min-h-dvh">
+      <header className="cf-stack">
+        <span className="cf-label">Casefile</span>
+        <h1 className="cf-hero">Your group chat went quiet.</h1>
+        <p className="cf-lead">Crack a case together, five minutes a day.</p>
+        <ButtonLink variant="primary" block href="#create">
+          Start a case
+        </ButtonLink>
+        <TryDemo />
+        <p className="cf-caption">The demo is a ready case for four. You play every seat and move the days yourself.</p>
+      </header>
+
+      <section className="cf-stack" aria-labelledby="how">
+        <h2 className="cf-heading" id="how">
+          How it works
+        </h2>
+        <ol className="cf-steps">
+          {STEPS.map((s, i) => (
+            <li key={s.title} className="cf-note">
+              <span className="cf-label">Step {i + 1}</span>
+              <p className="cf-steps__title">
+                <s.icon size={20} strokeWidth={1.75} aria-hidden="true" />
+                {s.title}
+              </p>
+              <p className="cf-caption">{s.text}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <CreateCase />
     </main>
   );
 }
