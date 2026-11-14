@@ -12,7 +12,7 @@ from sqlmodel import Session, SQLModel, create_engine, select
 
 import app.models  # registers every table on SQLModel.metadata
 from app.config import Settings
-from app.db import _normalize, get_session
+from app.db import _normalize, engine_kwargs, get_session
 from app.events import Event, funnel, log_event
 from app.main import app
 from app.payments import service
@@ -250,3 +250,14 @@ def test_unknown_event_type_rejected(db):
 )
 def test_database_url_normalized(url, expected):
     assert _normalize(url) == expected
+
+
+def test_postgres_engine_disables_prepared_statements():
+    kw = engine_kwargs("postgresql+psycopg://u:p@ep-x-pooler.neon.tech/db?sslmode=require")
+    assert kw["connect_args"] == {"prepare_threshold": None}
+    # the engine builds without connecting (psycopg driver importable)
+    create_engine("postgresql+psycopg://u:p@localhost/db", **kw).dispose()
+
+
+def test_sqlite_engine_kwargs():
+    assert engine_kwargs("sqlite:///./x.db")["connect_args"] == {"check_same_thread": False}

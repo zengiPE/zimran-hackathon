@@ -28,6 +28,19 @@ def _normalize(url: str) -> str:
     return url
 
 
+def engine_kwargs(url: str) -> dict:
+    kwargs: dict = {"pool_pre_ping": True}
+    if url.startswith("sqlite"):
+        kwargs["connect_args"] = {"check_same_thread": False}
+    elif url.startswith("postgresql"):
+        # Neon/Supabase poolers (PgBouncer, transaction mode) break server-side prepared
+        # statements ("prepared statement ... does not exist"); psycopg must not create them.
+        # Small pool: each serverless instance needs only a couple of connections.
+        kwargs["connect_args"] = {"prepare_threshold": None}
+        kwargs.update(pool_size=2, max_overflow=3, pool_recycle=300)
+    return kwargs
+
+
 @lru_cache
 def get_engine() -> Engine:
     url = _normalize(get_settings().database_url)
@@ -36,10 +49,7 @@ def get_engine() -> Engine:
         # Set DATABASE_URL to Postgres there; this only keeps the API from crashing.
         log.warning("DATABASE_URL not set on Vercel: using ephemeral SQLite in /tmp")
         url = "sqlite:////tmp/" + url.removeprefix("sqlite:///./")
-    kwargs: dict = {"pool_pre_ping": True}
-    if url.startswith("sqlite"):
-        kwargs["connect_args"] = {"check_same_thread": False}
-    engine = create_engine(url, **kwargs)
+    engine = create_engine(url, **engine_kwargs(url))
     import app.models  # noqa: F401  (registers every table before create_all)
 
     SQLModel.metadata.create_all(engine)
