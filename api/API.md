@@ -1,65 +1,210 @@
-# Casefile API
+# Casefile API — контракт для фронтенда
 
-Бэкенд асинхронного детектива: движок дел + игровое API. Все роуты под `/api/...`,
-Swagger на `/docs`. Ответы ниже сняты с живого прогона (`seed: 7`, demo).
+Все роуты под `/api/...`. Фронт ходит относительными путями (`fetch("/api/cases")`),
+`web/next.config.ts` проксирует их на бэкенд. Живая схема — Swagger на
+`http://localhost:8000/docs`. Ответы ниже сняты с реального прогона (`seed: 7`, demo,
+без ключа LLM — поэтому `story` шаблонный).
 
-## Поток игры
+## Карта экранов
 
-```
-POST /api/cases            организатор создаёт дело → ссылки игрокам + ссылка ведущего
-GET  /api/cases/{id}/me    игрок открывает свою ссылку (опрос раз в 5 с)
-POST /api/cases/{id}/board игрок пишет версию на общую доску
-POST /api/cases/{id}/advance  [demo] ведущий переключает день → после последнего дня голосование → развязка
-POST /api/cases/{id}/vote  игрок голосует (только в фазе vote)
-GET  /api/cases/{id}/reveal развязка (только в фазе reveal)
-```
+| Экран (страница фронта) | Запросы |
+|---|---|
+| Landing / Create `/` | `GET /api/themes` → `POST /api/cases` |
+| «Try a demo case» на лендинге | `POST /api/cases {"solo": {"me": "<имя>"}}` → сразу на `invites[0].url` |
+| Invite (QR и ссылки) | ответ `POST /api/cases`: `invites[].url`, `host_url` |
+| Host screen `/host/{case_id}?token=…` | `GET /api/cases/{id}/host` (опрос 5 с), кнопки `POST …/advance`, `POST …/hint` |
+| Player `/play/{case_id}?token=…` | `GET /api/cases/{id}/me` (опрос 5 с), `POST …/board` |
+| Vote (на странице игрока, `phase === "vote"`) | `POST /api/cases/{id}/vote` |
+| Reveal (`phase === "reveal"`) | `GET /api/cases/{id}/reveal` |
+| Paywall `/paywall?case_id=…` | `GET /api/plans` → `POST /api/checkout` → редирект на Stripe → `GET /api/checkout/{session_id}` |
 
-Аккаунтов нет. У каждого игрока свой `token` в ссылке, у организатора отдельный
-`host_token` для экрана ведущего. Ссылки: `/play/{case_id}?token=…` и
-`/host/{case_id}?token=…` — это страницы фронта.
+Аккаунтов нет. Токен игрока и токен ведущего приходят в query-параметре `token` из ссылки,
+фронт просто пробрасывает его в API. Ссылки уже полные (домен из `PUBLIC_WEB_URL` бэкенда).
 
-## Фазы и дни
+## Игровой цикл
 
-- `day` — текущий день дела (1…`days_total`). В реальном режиме день = 24 часа от
-  создания, в demo дни переключает ведущий через `advance`.
-- `phase`: `play` → `vote` (день после последнего) → `reveal` (когда проголосовали все
-  зашедшие игроки, или ещё через день, или ещё один `advance`).
-- **Правило выбывшего:** если владелец не открыл улику до конца её дня, она попадает в
-  `shared_clues` у всех. Открыть улику = зайти на `/me` в этот день.
-- `hint` (ведущий) делает одну ключевую улику из открытых дней общей.
+- `day` — текущий день (1…`days_total`). В обычном режиме день = 24 часа с момента
+  создания (таймер: `next_unlock_at`). В demo дни переключает ведущий кнопкой `advance`.
+- `phase`: `"play"` → `"vote"` (после последнего дня) → `"reveal"`.
+  В reveal переходит, когда проголосовали все зашедшие игроки, или ещё одним `advance`.
+- Фронт решает, что показывать, **только по `phase`**: play → улики и доска,
+  vote → выбор подозреваемого, reveal → запросить `/reveal` и показать развязку.
+- Открыть улику = загрузить `/me` в этот день. Неоткрытая до конца дня улика игрока
+  становится общей и появляется у всех в `shared_clues` (правило выбывшего).
+- Опрос: `/me` и `/host` раз в 5 секунд. Realtime нет.
 
-## Эндпоинты
+## TypeScript-типы
 
-### `GET /api/themes`
-`[{"id": "lake-house", "title": "The Lake House Weekend", "tagline": "…"}, {"id": "office-party", …}]`
+```ts
+export type Phase = "play" | "vote" | "reveal";
 
-### `POST /api/cases` → 201
-```json
-{"theme": "lake-house", "players": ["Ann", "Bo", "Cy", "Di"], "demo": true}
-```
-Необязательно: `days` (2–5; по умолчанию 3 в demo, 5 иначе), `suspects` (5; 4 только для
-маленьких дел), `seed` (одно и то же дело при одном seed).
-```json
-{
-  "case_id": "vlxdQvn1",
-  "host_token": "w7-cR6SY0nXvzSNk",
-  "host_url": "/host/vlxdQvn1?token=w7-cR6SY0nXvzSNk",
-  "days": 3,
-  "invites": [{"idx": 0, "name": "Ann", "token": "PzYIpkY9oI2w",
-               "url": "/play/vlxdQvn1?token=PzYIpkY9oI2w"}, "…"]
+export interface Theme { id: string; title: string; tagline: string }
+
+export interface Suspect { id: number; name: string; role: string }
+
+export interface Labels {
+  room: string[];   // "Sunroom", "Porch"…
+  time: string[];   // по порядку времени: "7:00 PM", "7:30 PM"…
+  item: string[];   // с артиклем: "a flashlight"
+}
+
+export interface Clue {
+  id: string;            // "d1p0" = день 1, игрок 0
+  day: number;
+  text: string;          // точный факт, источник правды — показывать мелко под story
+  story: string | null;  // текст в стиле темы — показывать крупно
+  format: string | null; // подпись документа: "Text message", "Photo caption"…
+  fact: Record<string, string | number>; // структура факта, для UI не нужна
+  from: string;          // имя игрока, которому выпала улика
+}
+
+export interface BoardPost {
+  author: string;
+  text: string;          // может быть "", если к посту прикреплена улика
+  ts: string;
+  is_ai: boolean;        // пост ИИ-напарника → пометка «AI teammate»
+  fact: Clue | null;     // прикреплённая улика («Share this clue») — рисовать карточкой
+}
+
+export interface PlayerRow {
+  idx: number; name: string;
+  is_ai: boolean;        // ИИ-напарник
+  joined: boolean; opened_today: boolean; voted: boolean;
+  token?: string; url?: string; // только в /host
+}
+
+interface CaseCommon {
+  case_id: string;
+  title: string;
+  intro: string;          // публичная завязка, абзацы через "\n\n"
+  demo: boolean;
+  day: number;
+  days_total: number;
+  phase: Phase;
+  next_unlock_at: string; // ISO, когда откроется следующий день (в demo не нужен)
+  suspects: Suspect[];
+  labels: Labels;
+}
+
+export interface CreateCaseIn {
+  theme?: string;         // id из /api/themes, по умолчанию "lake-house"
+  // 3–6 мест: имя (человек) или {name, ai: true} (место ИИ-напарника). Не нужно при solo.
+  players?: (string | { name: string; ai?: boolean })[];
+  solo?: { me: string };  // соло: ты + 3 ИИ-напарника, 3 дня, demo включён
+  demo?: boolean;         // демо-режим: дни переключает ведущий
+  days?: number;          // 2–5; по умолчанию 3 в demo, 5 иначе
+}
+
+export interface CreateCaseOut {
+  case_id: string;
+  host_token: string;
+  host_url: string;
+  days: number;
+  // токены ИИ-мест тоже приходят: для переключателя «Смотреть как»
+  invites: { idx: number; name: string; token: string; url: string; ai: boolean }[];
+}
+
+export interface MeOut extends CaseCommon {
+  me: { idx: number; name: string; is_ai: boolean };
+  my_clues: Clue[];       // свои улики за все открытые дни
+  shared_clues: Clue[];   // чужие улики, ставшие общими (выбывшие, подсказки)
+  board: BoardPost[];     // последние 100, старые сверху
+  typing: string[];       // имена ИИ-напарников, которые «печатают» → индикатор
+  players: PlayerRow[];
+  my_vote: number | null; // id подозреваемого
+}
+
+export interface HostOut extends CaseCommon {
+  players: PlayerRow[];   // с token и url — для QR
+  votes_count: number;
+}
+
+export interface RevealOut {
+  case_id: string; title: string; intro: string;
+  culprit: Suspect;
+  truth: { suspect: string; room: string; time: string; item: string }[];
+  chain: {
+    clue_id: string; day: number; player: number; from: string;
+    text: string;
+    eliminated: string[]; // кого исключила эта улика
+    remaining: string[];  // кто ещё под подозрением после неё
+    worlds_left: number;  // сколько возможных миров осталось
+  }[];
+  votes: { player: string; suspect: string; correct: boolean }[];
+  stats: {
+    worlds_total: number;   // 1 728 000
+    worlds_public: number;  // после публичной завязки
+    worlds_left: number;
+    candidates_by_day: number[];
+    seed: number;
+  };
+}
+
+export interface Plan {
+  key: "case" | "monthly"; name: string; description: string;
+  amount_cents: number; interval: string | null;
+}
+
+export interface PaymentOut {
+  case_id: string; paid: boolean; plan: string | null; status: string | null;
 }
 ```
 
-### `GET /api/cases/{id}/me?token=…`
+## Эндпоинты
+
+### `GET /api/themes` → `Theme[]`
+```json
+[{"id": "lake-house", "title": "The Lake House Weekend",
+  "tagline": "Five old friends, one rented cabin, and a very expensive accident."},
+ {"id": "office-party", "title": "The Office Holiday Party", "tagline": "…"}]
+```
+
+### `POST /api/cases` → 201 `CreateCaseOut`
+```json
+{"theme": "lake-house", "players": ["Ann", "Bo", "Cy", "Di"], "demo": true}
+```
 ```json
 {
-  "case_id": "vlxdQvn1",
+  "case_id": "fAtg5pIP",
+  "host_token": "bUpp1GCfJ1JLRhDf",
+  "host_url": "http://localhost:3000/host/fAtg5pIP?token=bUpp1GCfJ1JLRhDf",
+  "days": 3,
+  "invites": [
+    {"idx": 0, "name": "Ann", "token": "xDC3O9HTZbQa",
+     "url": "http://localhost:3000/play/fAtg5pIP?token=xDC3O9HTZbQa"}
+  ]
+}
+```
+Создание занимает до нескольких секунд (тексты улик пишет LLM) — нужен лоадер.
+
+Соло (кнопка «Try a demo case»):
+```json
+{"solo": {"me": "Ann"}, "theme": "lake-house"}
+```
+→ тот же ответ, 4 места: `invites[0]` — человек, `invites[1..3]` — ИИ (`"ai": true`,
+имена Nora, Felix, Kai). `days: 3`, demo включён: `host_token` нужен для кнопки «Next day».
+Места можно смешивать: `"players": ["Ann", "Bo", {"name": "Kai", "ai": true}]`.
+
+### `GET /api/cases/{id}/me?token=…` → `MeOut`
+```json
+{
+  "case_id": "fAtg5pIP",
   "title": "The Lake House Weekend",
-  "intro": "Five college friends rented a cabin…\n\nThe owner's prized 1970s record player was found smashed in the Sunroom. … Whoever was in the Sunroom at 7:00 PM broke it.",
-  "demo": true, "day": 2, "days_total": 3, "phase": "play",
+  "intro": "Five college friends rented a cabin on Lake Wendell…\n\nThe owner's prized 1970s record player was found smashed in the Sunroom. The downstairs clock stopped when it fell: 7:00 PM. Whoever was in the Sunroom at 7:00 PM broke it.",
+  "demo": true, "day": 1, "days_total": 3, "phase": "play",
   "next_unlock_at": "2026-11-15T11:08:29+00:00",
-  "suspects": [{"id": 0, "name": "Priya", "role": "the college roommate"}, "…5 шт."],
-  "labels": {"room": ["kitchen", "…"], "time": ["6:00 pm", "…"], "item": ["camera", "…"]},
+  "suspects": [
+    {"id": 0, "name": "Priya", "role": "The doctor on call all weekend"},
+    {"id": 1, "name": "Jordan", "role": "The ex-roommate who never grew up"},
+    {"id": 2, "name": "Leo", "role": "The guy who brought his guitar"},
+    {"id": 3, "name": "Maya", "role": "The planner who booked the cabin"},
+    {"id": 4, "name": "Sam", "role": "The newcomer, someone's plus-one"}
+  ],
+  "labels": {
+    "room": ["Porch", "Kitchen", "Boathouse", "Loft", "Sunroom"],
+    "time": ["7:00 PM", "7:30 PM", "8:00 PM", "8:30 PM", "9:00 PM"],
+    "item": ["a bottle of rosé", "a flashlight", "a fishing rod", "a guitar", "a deck of cards"]
+  },
   "me": {"idx": 0, "name": "Ann"},
   "my_clues": [{
     "id": "d1p0", "day": 1,
@@ -75,76 +220,137 @@ GET  /api/cases/{id}/reveal развязка (только в фазе reveal)
   "my_vote": null
 }
 ```
-- `text` — точная формулировка факта (источник правды). `story` — текст в стиле темы
-  (Claude, а без ключа или при провале проверки — шаблон), `format` — подпись документа
-  («Text message», «Receipt note»). Показываем `format` + `story`, а `text` строкой ниже.
-- `intro` — публичная завязка: место и время происшествия известны всем с первого дня.
-- `labels` + `suspects` хватает, чтобы нарисовать блокнот-сетку «подозреваемый × комната/время/предмет».
-- `time` в `labels` идёт по порядку времени.
+Идеи для UI:
+- Карточка улики: `format` маленькой плашкой, `story` основным текстом, `text` серой строкой
+  «Fact: …» снизу.
+- `suspects` × `labels` — блокнот-сетка, где игрок сам ставит ✓/✗ (состояние только на фронте,
+  например в `localStorage`).
+- `players` — кто зашёл и кто уже открыл сегодняшнюю улику (давление группы).
 
-### `GET /api/cases/{id}/host?token=<host_token>`
-То же, что `common` часть `/me`, плюс `players[]` с `token` и `url` (для QR) и `votes_count`.
+### `GET /api/cases/{id}/host?token=<host_token>` → `HostOut`
+Общие поля как в `/me`, плюс `players[]` с `token` и `url` (для QR каждого игрока) и
+`votes_count`. Улик игроков здесь нет.
 
-### `POST /api/cases/{id}/board` → 201
-`{"token": "…", "text": "до 280 символов"}` → `{"author", "text", "ts"}`
+### `POST /api/cases/{id}/board` → 201 `BoardPost`
+`{"token": "…", "text": "до 280 символов", "fact_id": "d1p0"}` → `BoardPost`.
+- `fact_id` (необязательно) — кнопка «Share this clue» у своей улики: id из `my_clues`.
+  Можно без текста. Чужую или ещё закрытую улику прикрепить нельзя (403).
+- Нужен текст или `fact_id` (иначе 422).
+- В игре с ИИ после поста отвечает 1–2 ИИ-напарника. Их ответы появятся в `board` через
+  2–6 с (пока они в `typing`) — фронт увидит их при обычном опросе `/me`.
 
-### `POST /api/cases/{id}/vote`
-`{"token": "…", "suspect": 1}` → `{"ok": true, "phase": "vote" | "reveal"}`. 409 вне фазы vote.
-Голос можно менять до развязки.
+### `POST /api/cases/{id}/vote` → `{ok: true, phase: Phase}`
+`{"token": "…", "suspect": 0}`. Только при `phase === "vote"`, иначе 409. Голос можно
+менять до развязки. Если в ответе `phase: "reveal"` — сразу грузить `/reveal`.
 
-### `POST /api/cases/{id}/advance` (только demo)
-`{"host_token": "…"}` → состояние ведущего (как `/host`). 409 если дело не demo.
+### `POST /api/cases/{id}/advance` → `HostOut` (только demo)
+`{"host_token": "…"}`. Каждое нажатие: следующий день → после последнего голосование →
+ещё раз развязка. 409, если дело не demo.
 
-### `POST /api/cases/{id}/hint`
-`{"host_token": "…"}` → `{"shared": <clue>}`. 409 если подсказок нет.
+### `POST /api/cases/{id}/hint` → `{shared: Clue}`
+`{"host_token": "…"}`. Делает одну ключевую улику общей (на случай, если группа застряла).
+409, если подсказок пока нет.
 
-### `GET /api/cases/{id}/reveal`
-409 до фазы reveal.
+### `GET /api/cases/{id}/reveal` → `RevealOut`
+409 до `phase === "reveal"`. Токен не нужен.
 ```json
 {
   "culprit": {"id": 0, "name": "Priya", "role": "The doctor on call all weekend"},
-  "truth": [{"suspect": "Priya", "room": "Sunroom", "time": "7:00 PM", "item": "a guitar"}, "…"],
+  "truth": [{"suspect": "Priya", "room": "Sunroom", "time": "7:00 PM", "item": "a guitar"}],
   "chain": [{
     "clue_id": "d1p0", "day": 1, "player": 0, "from": "Ann",
     "text": "Jordan was not seen at 7:00 PM.",
     "eliminated": ["Jordan"], "remaining": ["Priya", "Leo", "Maya", "Sam"],
     "worlds_left": 276480
-  }, "…"],
+  }],
   "votes": [{"player": "Ann", "suspect": "Priya", "correct": true}],
   "stats": {"worlds_total": 1728000, "worlds_public": 345600, "worlds_left": 64,
             "candidates_by_day": [4, 3, 1], "seed": 7}
 }
 ```
-`chain` — анимация развязки: улика за уликой, кто кого исключил, сколько из 1 728 000
-возможных миров осталось.
+Вау-момент демо: проиграть `chain` по шагу (≈1 с на улику) — карточки подозреваемых
+зачёркиваются по `eliminated`, счётчик `worlds_left` тает от 1 728 000 до финала, в конце
+остаётся `culprit`. Подпись под каждым шагом: «from Ann». Затем `votes` — кто угадал.
 
-## Как устроен движок (`app/engine/`)
+### Оплата (Stripe test mode)
 
-- **Мир** — каждого из 5 подозреваемых видели один раз: в одном месте, в одно время, с одним
-  предметом (три перестановки). Всего 120³ = 1 728 000 миров; `solver.py` перебирает их все
-  один раз, каждая улика — векторная булева маска (numpy). Публичная завязка («кто был в
-  {room} в {time}») — тоже маска, с неё начинаются все проверки. Виновный — тот, кто был в
-  комнате происшествия.
-- **Улики** (`facts.py`) — атомарные факты, истинные в скрытом мире: «X was not in the Kitchen»,
-  «X was either in A or on B», «the person with a flashlight was seen later than Y» и т.д.
-  Темы и тексты — `app/story` (нарратив), движок берёт оттуда имена, места, время, предметы.
-- **Сборка** (`generate.py`): случайная истина по seed → жадно набираем слабые улики, пока
-  виновный не станет единственным → выкидываем лишние (каждая оставшаяся необходима) →
-  раскладываем по игрокам и дням, добиваем нейтральными уликами → проверяем гарантии.
-- **Гарантии** (проверяются для каждого дела и в `tests/test_engine.py` на 300 seed):
-  единственный виновный · никто не решит в одиночку · без любого игрока не решить ·
-  ответ появляется только в последний день · все улики правдивы.
-- Скорость: ~0.1 с на дело (5 подозреваемых, до 6 игроков × 5 дней).
+- `GET /api/plans` → `Plan[]` — цены не хардкодить:
+  `[{"key": "case", "name": "Casefile: your next case", "amount_cents": 1200, "interval": null},
+  {"key": "monthly", "name": "Casefile Club", "amount_cents": 799, "interval": "month"}]`
+- `POST /api/checkout` `{"case_id": "…", "plan": "case" | "monthly"}` → `{url, session_id}`.
+  Делаем `window.location.href = url`.
+- Stripe возвращает на `/paywall?case_id=…&checkout=success&session_id=…`
+  (или `checkout=canceled`). На этой странице вызвать `GET /api/checkout/{session_id}` →
+  `PaymentOut` (подтверждает оплату, даже если вебхук опоздал).
+- `GET /api/cases/{id}/payment` → `PaymentOut` — оплачено ли дело.
+- 503, если Stripe на бэкенде не настроен.
+- Тестовая карта: `4242 4242 4242 4242`, любая будущая дата, любой CVC.
 
-## Запуск
+## ИИ-напарники (соло-режим)
+
+Чтобы судья (или новый игрок) прошёл дело один. Всё делает сервер, отдельных эндпоинтов нет.
+
+- **Каждый день** каждый ИИ выкладывает на доску свою улику дня (`board[].fact`) с короткой
+  репликой.
+- **Ты пишешь пост** — отвечает 1 ИИ (2, если твоя улика изменила их версии): гипотеза
+  «по моим уликам это Priya или Leo», вопрос «Ann, anything on Leo?» или реакция.
+- **Открылось голосование** — все ИИ голосуют сразу и пишут «Going with …». Развязка
+  наступает, когда проголосуешь ты.
+- ИИ знает только свои улики и то, что выложено на доску. Его версия считается солвером,
+  поэтому он никогда не называет того, кто уже исключён, и не выдумывает факты. Чтобы ИИ
+  сузили круг, делись уликами — в этом и игра.
+- Задержка 2–6 с: пост уже создан, но в `board` его ещё нет, а автор есть в `typing`.
+
+UI (Диас): кнопка «Try a demo case», аватар ИИ с пометкой «AI teammate» (`is_ai`),
+индикатор «Nora is typing…» (`typing`), кнопка «Share this clue» на карточке своей улики,
+переключатель «Смотреть как» (токены ИИ из `invites`, чтобы на демо показать, что у
+каждого свои улики).
+
+## Ошибки
+
+Тело ошибки всегда `{"detail": "…"}` (у 422 от валидации `detail` — массив).
+
+| Код | Когда | Что делать на фронте |
+|---|---|---|
+| 403 | неверный `token` / `host_token`; чужая улика в `fact_id` | «Ссылка недействительна» |
+| 404 | дело не найдено | «Дело не найдено» |
+| 409 | действие не в той фазе (`vote` раньше времени, `reveal` до конца) | обновить состояние через `/me` |
+| 422 | неверное тело (меньше 3 игроков, пустое имя, неизвестная тема) | показать ошибку формы |
+| 409 | ИИ-напарники выключены (`AI_FRIENDS_ENABLED=false`) при `solo` | скрыть «Try a demo case» |
+| 503 | оплата не настроена | скрыть оплату / показать заглушку |
+
+## Локальный запуск
 
 ```bash
-cd api
-uv run fastapi dev app/main.py   # http://localhost:8000/docs
-uv run pytest                    # ~35 с, 300 seed; быстро: ENGINE_SEEDS=20 uv run pytest
+npm run dev            # из корня: web :3000 + api :8000
+# или только API:
+cd api && uv run fastapi dev app/main.py
 ```
 
-Продакшен: нужна переменная `DATABASE_URL` (Postgres, например Neon из Vercel
-Marketplace). Без неё на Vercel используется SQLite в `/tmp` — у каждого инстанса своя,
-игры будут теряться. `PUBLIC_WEB_URL` — домен фронта: на него ведут ссылки в `invites`
-(и возврат из Stripe).
+Быстро получить демо-дело для вёрстки:
+```bash
+curl -s -X POST localhost:8000/api/cases -H 'content-type: application/json' \
+  -d '{"players":["Ann","Bo","Cy","Di"],"demo":true,"seed":7}'
+```
+С одним и тем же `seed` дело всегда одно и то же (удобно для демо).
+
+---
+
+## Как устроен движок (`app/engine/`, для README и питча)
+
+- **Мир** — каждого из 5 подозреваемых видели один раз: в одном месте, в одно время, с одним
+  предметом. Всего 120³ = 1 728 000 миров; `solver.py` перебирает их все, каждая улика —
+  булева маска (numpy). Публичная завязка («кто был в {room} в {time}») — тоже маска.
+- **Сборка** (`generate.py`): случайная истина по seed → жадно набираем слабые улики, пока
+  виновный не станет единственным → выкидываем лишние → раскладываем по игрокам и дням.
+- **Гарантии** (каждое дело, и `tests/test_engine.py` на 300 seed): единственный виновный ·
+  никто не решит в одиночку · без любого игрока не решить · ответ только в последний день ·
+  все улики правдивы. ~0.1 с на дело.
+- **ИИ-напарники** (`app/ai/`): знания ИИ = свои улики + общие + выложенные на доску;
+  версия = `engine.candidates(...)`. Ходы детерминированы по seed, Claude только формулирует
+  реплику, и каждая проверяется (имена — только из кандидатов, места/время/предметы — только
+  из известных улик), иначе шаблон. Персоны и шаблоны: `app/ai/personas.py` (тексты — Ернур).
+- Продакшен: `DATABASE_URL` (Postgres), `PUBLIC_WEB_URL` (домен фронта),
+  `ANTHROPIC_API_KEY` (тексты улик и реплики ИИ; без него шаблоны),
+  `AI_FRIENDS_ENABLED` (по умолчанию true). Новые колонки в существующих таблицах
+  добавляются автоматически при старте (`db.add_missing_columns`).
