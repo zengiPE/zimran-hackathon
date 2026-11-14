@@ -257,3 +257,69 @@ a.cf-btn:focus-visible {
   font-size: 24px;
   line-height: 1;
 }
+
+/* ---------- Notebook additions (phase 5) ---------- */
+
+/* The grid scrolls sideways inside the card; the clues strip and footer don't. */
+.cf-notebook {
+  overflow-x: visible;
+}
+.cf-nb__scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+/* "Your clues" strip above the grid. */
+.cf-nb__clues {
+  border-bottom: 2px solid var(--rule-blue);
+}
+.cf-nb__clues > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-3);
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+}
+.cf-nb__clues > summary:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: -3px;
+}
+.cf-nb__clues ul {
+  list-style: none;
+  margin: 0;
+  padding: 0 var(--space-3) var(--space-3);
+  display: grid;
+  gap: var(--space-2);
+  font-family: var(--font-type);
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 20px;
+}
+.cf-nb__clues mark {
+  background: var(--marker);
+  color: var(--ink);
+  padding: 1px 3px;
+}
+
+/* Automatic ✗: faint, so manual marks stand out. */
+.cf-nb__btn.is-auto {
+  opacity: 0.5;
+}
+
+/* Crosshair: the row and column of the box in focus. */
+.cf-nb__cell.is-cross,
+.cf-nb__col th.is-cross,
+.cf-nb__name.is-cross {
+  background: color-mix(in srgb, var(--marker) 25%, var(--card));
+}
+
+/* Legend and Undo under the grid. */
+.cf-nb__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-right: var(--space-2);
+}
