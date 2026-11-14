@@ -11,10 +11,11 @@ interface Props {
   onPost: (text: string) => Promise<void>; // throw to show an error
   pinned?: boolean; // stick to the bottom of the screen
   disabled?: boolean;
+  hint?: string; // one short line under the field, e.g. how AI teammates read the board
 }
 
 /** One text field (1–280 characters) with a counter and a "Post" button. */
-export function Composer({ onPost, pinned, disabled }: Props) {
+export function Composer({ onPost, pinned, disabled, hint }: Props) {
   const id = useId();
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -50,7 +51,7 @@ export function Composer({ onPost, pinned, disabled }: Props) {
         value={text}
         onChange={(e) => setText(e.target.value)}
         disabled={disabled}
-        aria-describedby={error ? `${id}-error` : undefined}
+        aria-describedby={[hint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(" ") || undefined}
         autoComplete="off"
       />
       <span className="cf-caption">
@@ -59,6 +60,11 @@ export function Composer({ onPost, pinned, disabled }: Props) {
       <Button variant="primary" type="submit" disabled={disabled || busy || !trimmed}>
         {busy ? "Posting…" : "Post"}
       </Button>
+      {hint && (
+        <p className="cf-caption basis-full" id={`${id}-hint`}>
+          {hint}
+        </p>
+      )}
       {error && (
         <p className="cf-error basis-full" id={`${id}-error`} role="alert">
           {error}

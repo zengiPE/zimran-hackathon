@@ -133,6 +133,8 @@ export function PlayerScreen() {
   const opened = me.players.filter((p) => p.opened_today).length;
   const voted = me.players.filter((p) => p.voted).length;
   const suspectNames = me.suspects.map((s) => s.name);
+  // AI teammates read only clues attached with "Share this clue", never clues typed in a post.
+  const hasAi = me.players.some((p) => p.is_ai);
   // The incident from the case brief: "Whoever was in the Sunroom at 7:00 PM broke it."
   const goalMatch = /in the ([A-Z][\w ]*?) at (\d{1,2}:\d{2} [AP]M)/.exec(me.intro);
   const goal =
@@ -352,7 +354,13 @@ export function PlayerScreen() {
           </CoachMark>
         )}
         <Board posts={me.board} myName={me.me.name} typing={me.typing} />
-        {!viewingAi && <Composer pinned onPost={(text) => post(text)} />}
+        {!viewingAi && (
+          <Composer
+            pinned
+            onPost={(text) => post(text)}
+            hint={hasAi ? "AI teammates only count clues sent with Share this clue." : undefined}
+          />
+        )}
       </div>
     </Screen>
   );
