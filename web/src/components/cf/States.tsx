@@ -38,6 +38,6 @@ export function ErrorNote({ children, action }: { children: ReactNode; action?: 
 }
 
 /** One centered column, 480px max: the frame of every game screen. */
-export function Screen({ children }: { children: ReactNode }) {
-  return <main className="cf-desk cf-screen min-h-dvh">{children}</main>;
+export function Screen({ children, className }: { children: ReactNode; className?: string }) {
+  return <main className={`cf-desk cf-screen min-h-dvh ${className ?? ""}`}>{children}</main>;
 }
