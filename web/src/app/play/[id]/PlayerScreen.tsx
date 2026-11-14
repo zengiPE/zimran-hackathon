@@ -133,6 +133,12 @@ export function PlayerScreen() {
   const opened = me.players.filter((p) => p.opened_today).length;
   const voted = me.players.filter((p) => p.voted).length;
   const suspectNames = me.suspects.map((s) => s.name);
+  // The incident from the case brief: "Whoever was in the Sunroom at 7:00 PM broke it."
+  const goalMatch = /in the ([A-Z][\w ]*?) at (\d{1,2}:\d{2} [AP]M)/.exec(me.intro);
+  const goal =
+    goalMatch && me.labels.room.includes(goalMatch[1]) && me.labels.time.includes(goalMatch[2])
+      ? { room: goalMatch[1], time: goalMatch[2] }
+      : null;
   // Facts for the notebook strip: your own clues only, newest first.
   const notebookClues = [...clues]
     .reverse()
@@ -312,6 +318,7 @@ export function PlayerScreen() {
             labels={me.labels}
             storageKey={`notebook:${id}:${myToken}`}
             clues={notebookClues}
+            goal={goal}
           />
         </Drawer>
 

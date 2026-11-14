@@ -312,7 +312,7 @@ a.cf-btn:focus-visible {
   font-size: 20px;
 }
 .cf-nb__clues-toggle[aria-expanded="true"]::after {
-  content: "3";
+  content: "–"; /* en dash: the drawer is open */
 }
 .cf-nb__clues-toggle:focus-visible {
   outline: 3px solid var(--ink);
@@ -606,4 +606,41 @@ a.cf-btn:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
+}
+
+/* Notebook grid fixes: the corner cell joins the header lines; narrow notebooks fill the card. */
+.cf-notebook .cf-nb__corner {
+  border-left: 0;
+  border-right: 2px solid var(--ink-muted);
+  border-bottom: 2px solid var(--ink-muted);
+}
+@container (max-width: 759px) {
+  .cf-notebook table {
+    width: 100%;
+  }
+  .cf-notebook .cf-nb__btn {
+    width: 100%;
+  }
+}
+
+/* The incident's room and time: the two columns that decide the case. */
+.cf-nb__col th.is-key span {
+  color: var(--stamp);
+  font-weight: 700;
+}
+.cf-nb__goal {
+  margin: 0;
+  padding: var(--space-3) var(--space-3) 0;
+  font-size: 15px;
+  line-height: 22px;
+}
+.cf-nb__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* The pinned composer stays above the notebook's sticky name column. */
+.cf-composer--bar {
+  z-index: 3;
 }
