@@ -11,8 +11,10 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
+from app.ai import friends
 from app.config import get_settings
 from app.db import SessionDep
 from app.engine import GenerationError, explain, generate_case
@@ -34,9 +36,21 @@ def _iso(dt: datetime) -> str:
 
 # ---------- request bodies ----------
 
+class PlayerIn(BaseModel):
+    name: str = Field(max_length=40)
+    ai: bool = False  # an AI teammate takes this seat
+
+
+class SoloIn(BaseModel):
+    me: str = Field(min_length=1, max_length=40)
+
+
 class CreateCase(BaseModel):
     theme: str = "lake-house"
-    players: list[str] = Field(min_length=3, max_length=6)
+    # Names, or {name, ai} objects to seat AI teammates. Not needed with `solo`.
+    players: list[str | PlayerIn] | None = Field(default=None, max_length=6)
+    # Solo: you + 3 AI teammates, 3 days, demo controls on.
+    solo: SoloIn | None = None
     demo: bool = False
     days: int | None = Field(default=None, ge=2, le=5)
     suspects: int = Field(default=5, ge=4, le=5)
@@ -49,7 +63,8 @@ class HostAction(BaseModel):
 
 class BoardIn(BaseModel):
     token: str
-    text: str = Field(min_length=1, max_length=280)
+    text: str = Field(default="", max_length=280)
+    fact_id: str | None = None  # attach one of your own unlocked clues ("Share this clue")
 
 
 class VoteIn(BaseModel):
@@ -123,8 +138,30 @@ class _Snapshot:
         self.opened = set(session.exec(
             select(ClueOpen.clue_id).where(ClueOpen.case_id == case.id)).all())
         self.joined = {p.idx for p in self.players if p.joined_at is not None}
+        self.has_ai = friends.enabled() and any(p.is_ai for p in self.players)
+        self._open_ai_clues(session)
         self.phase = phase_of(self.day, self.days, self.joined, self.votes)
         self._auto_share(session)
+        if self.has_ai and friends.tick(session, self):
+            self.phase = phase_of(self.day, self.days, self.joined, self.votes)
+
+    def _open_ai_clues(self, session: Session) -> None:
+        """AI seats read their clue the moment it unlocks, so it never counts as unopened.
+        With AI turned off, their clues auto-share like a dropout's: the case stays solvable."""
+        if not self.has_ai:
+            return
+        ai = {p.idx for p in self.players if p.is_ai}
+        new = [c["id"] for c in self.data["clues"]
+               if c["player"] in ai and c["day"] <= self.clue_day and c["id"] not in self.opened]
+        if not new:
+            return
+        for cid in new:
+            session.add(ClueOpen(case_id=self.case.id, clue_id=cid))
+        try:
+            session.commit()
+        except IntegrityError:  # a concurrent request opened them first
+            session.rollback()
+        self.opened |= set(new)
 
     def _auto_share(self, session: Session) -> None:
         """A clue nobody opened within its day becomes visible to the whole group."""
@@ -154,6 +191,7 @@ class _Snapshot:
             row = {
                 "idx": p.idx,
                 "name": p.name,
+                "is_ai": bool(p.is_ai),
                 "joined": p.joined_at is not None,
                 "opened_today": today in self.opened,
                 "voted": p.idx in self.votes,
@@ -163,6 +201,28 @@ class _Snapshot:
                 row["url"] = _url(f"/play/{self.case.id}?token={p.token}")
             rows.append(row)
         return rows
+
+    def board(self, session: Session) -> tuple[list[dict], list[str]]:
+        """Visible posts (oldest first, last 100) and names of AI seats still 'typing'."""
+        now = utcnow()
+        clues = {c["id"]: c for c in self.data["clues"]}
+        posts = session.exec(select(BoardPost).where(BoardPost.case_id == self.case.id)
+                             .order_by(BoardPost.id.desc()).limit(150)).all()
+        visible, typing = [], set()
+        for b in posts:
+            if b.visible_at is not None and _aware(b.visible_at) > now:
+                typing.add(self.names[b.player_idx])
+            else:
+                visible.append(b)
+        visible.sort(key=lambda b: (_aware(b.visible_at or b.created_at), b.id or 0))
+        rows = [{
+            "author": self.names[b.player_idx],
+            "text": b.text,
+            "ts": _iso(b.visible_at or b.created_at),
+            "is_ai": bool(b.is_ai),
+            "fact": self.clue(clues[b.fact_clue_id]) if b.fact_clue_id in clues else None,
+        } for b in visible[-100:]]
+        return rows, sorted(typing)
 
     def common(self) -> dict:
         return {
@@ -196,14 +256,32 @@ def _narrate(data: dict) -> None:
         clue["story_source"] = out.source
 
 
+def _seats(body: CreateCase) -> tuple[list[tuple[str, bool]], bool, int]:
+    """(name, is_ai) per seat, demo flag, days."""
+    if body.solo is not None:
+        if not friends.enabled():
+            raise HTTPException(409, "AI teammates are turned off")
+        seats = [(body.solo.me, False)] + [(p.name, True) for p in friends.personas_for(3)]
+        return [(n.strip()[:40], ai) for n, ai in seats], True, 3
+    if not body.players or not 3 <= len(body.players) <= 6:
+        raise HTTPException(422, "players must list 3 to 6 people (or use solo)")
+    seats = [(p, False) if isinstance(p, str) else (p.name, p.ai) for p in body.players]
+    seats = [(n.strip()[:40], ai) for n, ai in seats]
+    if any(ai for _, ai in seats) and not friends.enabled():
+        raise HTTPException(409, "AI teammates are turned off")
+    if all(ai for _, ai in seats):
+        raise HTTPException(422, "at least one seat must be a person")
+    return seats, body.demo, body.days or (3 if body.demo else 5)
+
+
 @router.post("/cases", status_code=201)
 def create_case(body: CreateCase, session: SessionDep) -> dict:
-    names = [n.strip()[:40] for n in body.players]
+    seats, demo, days = _seats(body)
+    names = [n for n, _ in seats]
     if any(not n for n in names):
         raise HTTPException(422, "player names must be non-empty")
     if body.theme not in THEMES:
         raise HTTPException(422, f"unknown theme {body.theme}")
-    days = body.days or (3 if body.demo else 5)
     seed = body.seed if body.seed is not None else secrets.randbelow(10**9)
     data = None
     for attempt in range(5):
@@ -219,20 +297,26 @@ def create_case(body: CreateCase, session: SessionDep) -> dict:
     _narrate(data)
 
     case = Case(id=secrets.token_urlsafe(6), host_token=secrets.token_urlsafe(12),
-                data=data, demo=body.demo)
+                data=data, demo=demo)
     session.add(case)
-    players = [Player(token=secrets.token_urlsafe(9), case_id=case.id, idx=i, name=n)
-               for i, n in enumerate(names)]
+    personas = iter(friends.personas_for(sum(ai for _, ai in seats)))
+    players = []
+    for i, (name, ai) in enumerate(seats):
+        persona = next(personas) if ai else None
+        players.append(Player(token=secrets.token_urlsafe(9), case_id=case.id, idx=i, name=name,
+                              is_ai=ai, persona=persona.key if persona else None,
+                              joined_at=utcnow() if ai else None))
     session.add_all(players)
     session.commit()
     log_event(session, "created", case.id, actor="host", players=len(names), days=days,
-              theme=body.theme, demo=body.demo)
+              theme=body.theme, demo=demo, ai_seats=sum(ai for _, ai in seats),
+              solo=body.solo is not None)
     return {
         "case_id": case.id,
         "host_token": case.host_token,
         "host_url": _url(f"/host/{case.id}?token={case.host_token}"),
         "days": days,
-        "invites": [{"idx": p.idx, "name": p.name, "token": p.token,
+        "invites": [{"idx": p.idx, "name": p.name, "token": p.token, "ai": bool(p.is_ai),
                      "url": _url(f"/play/{case.id}?token={p.token}")} for p in players],
     }
 
@@ -263,15 +347,14 @@ def me(case_id: str, token: str,session: SessionDep) -> dict:
 
     shared_ids = set(case.shared)
     shared = [c for c in snap.data["clues"] if c["player"] != player.idx and c["id"] in shared_ids]
-    board = session.exec(select(BoardPost).where(BoardPost.case_id == case.id)
-                         .order_by(BoardPost.id.desc()).limit(100)).all()
+    board, typing = snap.board(session)
     return {
         **snap.common(),
-        "me": {"idx": player.idx, "name": player.name},
+        "me": {"idx": player.idx, "name": player.name, "is_ai": bool(player.is_ai)},
         "my_clues": [snap.clue(c) for c in mine],
         "shared_clues": [snap.clue(c) for c in shared],
-        "board": [{"author": snap.names[b.player_idx], "text": b.text,
-                   "ts": _iso(b.created_at)} for b in reversed(board)],
+        "board": board,
+        "typing": typing,
         "players": snap.player_rows(),
         "my_vote": snap.votes.get(player.idx),
     }
@@ -290,10 +373,29 @@ def host(case_id: str, token: str,session: SessionDep) -> dict:
 def post_board(case_id: str, body: BoardIn, session: SessionDep) -> dict:
     case = _load(session, case_id)
     player = _player(session, case, body.token)
-    post = BoardPost(case_id=case.id, player_idx=player.idx, text=body.text.strip())
+    text = body.text.strip()
+    if not text and not body.fact_id:
+        raise HTTPException(422, "write something or attach a clue")
+    snap = _Snapshot(session, case)
+    clue = None
+    if body.fact_id:
+        clue = next((c for c in snap.data["clues"] if c["id"] == body.fact_id), None)
+        if clue is None or clue["player"] != player.idx or clue["day"] > snap.clue_day:
+            raise HTTPException(403, "you can only share your own unlocked clue")
+    post = BoardPost(case_id=case.id, player_idx=player.idx, text=text,
+                     fact_clue_id=body.fact_id, is_ai=False)
     session.add(post)
     session.commit()
-    return {"author": player.name, "text": post.text, "ts": _iso(post.created_at)}
+    session.refresh(post)
+    out = {"author": player.name, "text": post.text, "ts": _iso(post.created_at),
+           "is_ai": False, "fact": snap.clue(clue) if clue else None}
+    if snap.has_ai and not player.is_ai:
+        board, _ = snap.board(session)
+        recent = [f"{b['author']}: {b['text']}"
+                  + (f" [shared clue: {b['fact']['text']}]" if b["fact"] else "")
+                  for b in board[-6:]]
+        friends.respond(session, snap, player, post, recent)
+    return out
 
 
 @router.post("/cases/{case_id}/vote")

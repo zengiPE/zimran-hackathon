@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     # The web app origin: Stripe Checkout returns here, invite links point here
     public_web_url: str = "http://localhost:3000"
 
+    # AI teammates (solo mode). Turn off to fall back to friends-only games.
+    ai_friends_enabled: bool = True
+    # Multiplier for the 2-6 s "typing" delay before AI posts appear (0 in tests).
+    ai_delay_scale: float = 1.0
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
