@@ -7,14 +7,15 @@ The organizer gets a separate host token for the host screen (and demo controls)
 from __future__ import annotations
 
 import secrets
-from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
+from app import crew
 from app.ai import friends
+from app.clock import aware, iso, next_unlock_at, phase_of, virtual_day
 from app.config import get_settings
 from app.db import SessionDep
 from app.engine import GenerationError, explain, generate_case
@@ -25,13 +26,7 @@ from app.story import THEMES, ClueFact, get_theme, narrate_case
 router = APIRouter(prefix="/api", tags=["cases"])
 
 
-def _aware(dt: datetime) -> datetime:
-    """SQLite hands datetimes back without a timezone; they are stored as UTC."""
-    return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
-
-
-def _iso(dt: datetime) -> str:
-    return _aware(dt).isoformat()
+_aware, _iso = aware, iso
 
 
 # ---------- request bodies ----------
@@ -67,33 +62,15 @@ class BoardIn(BaseModel):
     fact_id: str | None = None  # attach one of your own unlocked clues ("Share this clue")
 
 
+class NextIn(BaseModel):
+    token: str | None = None  # any player of the finished case
+    host_token: str | None = None
+    theme: str | None = None  # default: the next theme in rotation
+
+
 class VoteIn(BaseModel):
     token: str
     suspect: int
-
-
-# ---------- game clock ----------
-
-def virtual_day(case: Case) -> int:
-    """1-based day of the case: real days elapsed since start plus days skipped in demo."""
-    elapsed = (utcnow() - _aware(case.started_at)).total_seconds()
-    return 1 + int(elapsed // case.day_seconds) + case.day_offset
-
-
-def next_unlock_at(case: Case) -> str:
-    start = _aware(case.started_at)
-    real_days = int((utcnow() - start).total_seconds() // case.day_seconds)
-    return _iso(start + timedelta(seconds=(real_days + 1) * case.day_seconds))
-
-
-def phase_of(day: int, days: int, joined: set[int], votes: dict[int, int]) -> str:
-    if day <= days:
-        return "play"
-    if day >= days + 2:
-        return "reveal"
-    if joined and joined <= votes.keys():
-        return "reveal"
-    return "vote"
 
 
 # ---------- helpers ----------
@@ -274,19 +251,18 @@ def _seats(body: CreateCase) -> tuple[list[tuple[str, bool]], bool, int]:
     return seats, body.demo, body.days or (3 if body.demo else 5)
 
 
-@router.post("/cases", status_code=201)
-def create_case(body: CreateCase, session: SessionDep) -> dict:
-    seats, demo, days = _seats(body)
-    names = [n for n, _ in seats]
-    if any(not n for n in names):
-        raise HTTPException(422, "player names must be non-empty")
-    if body.theme not in THEMES:
-        raise HTTPException(422, f"unknown theme {body.theme}")
-    seed = body.seed if body.seed is not None else secrets.randbelow(10**9)
+Seat = tuple[str, bool, str | None]  # name, is_ai, persona key
+
+
+def _build_case(session: Session, seats: list[Seat], *, demo: bool, days: int, theme: str,
+                suspects: int, seed: int | None, group_id: str | None = None,
+                prev_case_id: str | None = None) -> tuple[Case, list[Player]]:
+    """Generate, narrate and store a case with its seats."""
+    seed = seed if seed is not None else secrets.randbelow(10**9)
     data = None
     for attempt in range(5):
         try:
-            data = generate_case(seed + attempt, len(names), days, body.suspects, body.theme)
+            data = generate_case(seed + attempt, len(seats), days, suspects, theme)
             break
         except GenerationError:
             continue
@@ -297,28 +273,59 @@ def create_case(body: CreateCase, session: SessionDep) -> dict:
     _narrate(data)
 
     case = Case(id=secrets.token_urlsafe(6), host_token=secrets.token_urlsafe(12),
-                data=data, demo=demo)
+                data=data, demo=demo, group_id=group_id, prev_case_id=prev_case_id)
     session.add(case)
-    personas = iter(friends.personas_for(sum(ai for _, ai in seats)))
-    players = []
-    for i, (name, ai) in enumerate(seats):
-        persona = next(personas) if ai else None
-        players.append(Player(token=secrets.token_urlsafe(9), case_id=case.id, idx=i, name=name,
-                              is_ai=ai, persona=persona.key if persona else None,
-                              joined_at=utcnow() if ai else None))
+    players = [Player(token=secrets.token_urlsafe(9), case_id=case.id, idx=i, name=name,
+                      is_ai=ai, persona=persona, joined_at=utcnow() if ai else None)
+               for i, (name, ai, persona) in enumerate(seats)]
     session.add_all(players)
     session.commit()
-    log_event(session, "created", case.id, actor="host", players=len(names), days=days,
-              theme=body.theme, demo=demo, ai_seats=sum(ai for _, ai in seats),
-              solo=body.solo is not None)
+    return case, players
+
+
+def _case_out(case: Case, players: list[Player]) -> dict:
     return {
         "case_id": case.id,
         "host_token": case.host_token,
         "host_url": _url(f"/host/{case.id}?token={case.host_token}"),
-        "days": days,
+        "days": case.data["days"],
+        "theme": case.data["theme"],
         "invites": [{"idx": p.idx, "name": p.name, "token": p.token, "ai": bool(p.is_ai),
                      "url": _url(f"/play/{case.id}?token={p.token}")} for p in players],
     }
+
+
+@router.post("/cases", status_code=201)
+def create_case(body: CreateCase, session: SessionDep) -> dict:
+    seats, demo, days = _seats(body)
+    if any(not n for n, _ in seats):
+        raise HTTPException(422, "player names must be non-empty")
+    if body.theme not in THEMES:
+        raise HTTPException(422, f"unknown theme {body.theme}")
+    personas = iter(friends.personas_for(sum(ai for _, ai in seats)))
+    full: list[Seat] = [(n, ai, next(personas).key if ai else None) for n, ai in seats]
+    case, players = _build_case(session, full, demo=demo, days=days, theme=body.theme,
+                                suspects=body.suspects, seed=body.seed)
+    log_event(session, "created", case.id, actor="host", players=len(seats), days=days,
+              theme=body.theme, demo=demo, ai_seats=sum(ai for _, ai in seats),
+              solo=body.solo is not None)
+    return _case_out(case, players)
+
+
+def _crew_view(session: Session, case: Case, phase: str, idx: int | None) -> dict:
+    """Crew stats, plus (after the reveal) how to get to the next case."""
+    out: dict = {"crew": crew.summary(session, case)}
+    if phase == "reveal":
+        nxt = None
+        if case.next_case_id:
+            seat = session.exec(select(Player).where(Player.case_id == case.next_case_id,
+                                                     Player.idx == idx)).first() \
+                if idx is not None else None
+            nxt = {"case_id": case.next_case_id,
+                   "url": _url(f"/play/{case.next_case_id}?token={seat.token}") if seat else None}
+        out["next_case"] = nxt
+        out["next_access"] = crew.access(session, case)
+    return out
 
 
 @router.get("/cases/{case_id}/me")
@@ -357,16 +364,66 @@ def me(case_id: str, token: str,session: SessionDep) -> dict:
         "typing": typing,
         "players": snap.player_rows(),
         "my_vote": snap.votes.get(player.idx),
+        **_crew_view(session, case, snap.phase, player.idx),
     }
 
 
 @router.get("/cases/{case_id}/host")
-def host(case_id: str, token: str,session: SessionDep) -> dict:
+def host(case_id: str, token: str, session: SessionDep) -> dict:
     case = _load(session, case_id)
     _host(case, token)
     snap = _Snapshot(session, case)
+    view = _crew_view(session, case, snap.phase, None)
+    if view.get("next_case"):
+        nxt = session.get(Case, case.next_case_id)
+        view["next_case"]["host_url"] = _url(f"/host/{nxt.id}?token={nxt.host_token}")
     return {**snap.common(), "players": snap.player_rows(with_tokens=True),
-            "votes_count": len(snap.votes)}
+            "votes_count": len(snap.votes), **view}
+
+
+@router.post("/cases/{case_id}/next", status_code=201)
+def next_case(case_id: str, body: NextIn, session: SessionDep) -> dict:
+    """After the reveal: open the crew's next case. Same seats, new mystery, next theme.
+
+    Idempotent: if someone already opened it, everyone gets the same case back.
+    Needs a paid case or a Club subscription in the crew when Stripe is configured (402).
+    """
+    case = _load(session, case_id)
+    me_idx = None
+    if body.token:
+        me_idx = _player(session, case, body.token).idx
+    elif body.host_token:
+        _host(case, body.host_token)
+    else:
+        raise HTTPException(403, "token or host_token required")
+    snap = _Snapshot(session, case)
+    if snap.phase != "reveal":
+        raise HTTPException(409, f"finish this case first (phase: {snap.phase})")
+
+    if not case.next_case_id:
+        if crew.access(session, case)["requires_payment"]:
+            raise HTTPException(402, "the next case needs a paid plan")
+        theme = body.theme or crew.next_theme(snap.data["theme"])
+        if theme not in THEMES:
+            raise HTTPException(422, f"unknown theme {theme}")
+        group = case.group_id or case.id
+        seats: list[Seat] = [(p.name, bool(p.is_ai), p.persona) for p in snap.players]
+        new, _ = _build_case(session, seats, demo=case.demo, days=snap.days, theme=theme,
+                             suspects=len(snap.data["suspects"]), seed=None, group_id=group,
+                             prev_case_id=case.id)
+        case.group_id = group
+        case.next_case_id = new.id
+        session.add(case)
+        session.commit()
+        log_event(session, "created", new.id, actor="crew", players=len(seats),
+                  days=snap.days, theme=theme, demo=case.demo, next_of=case.id)
+
+    new = session.get(Case, case.next_case_id)
+    players = session.exec(select(Player).where(Player.case_id == new.id)
+                           .order_by(Player.idx)).all()
+    out = _case_out(new, players)
+    out["you"] = next((i for i in out["invites"] if i["idx"] == me_idx), None)
+    return out
 
 
 @router.post("/cases/{case_id}/board", status_code=201)
@@ -482,6 +539,9 @@ def reveal(case_id: str, session: SessionDep) -> dict:
         "chain": chain,
         "votes": [{"player": snap.names[p], "suspect": sus[s]["name"], "correct": s == culprit}
                   for p, s in sorted(snap.votes.items())],
+        "crew": crew.summary(session, case),
+        "next_case_id": case.next_case_id,
+        "next_access": crew.access(session, case),
         "stats": {
             "worlds_total": data["report"]["worlds_total"],
             "worlds_public": data["report"]["worlds_public"],

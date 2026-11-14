@@ -16,7 +16,8 @@
 | Player `/play/{case_id}?token=…` | `GET /api/cases/{id}/me` (опрос 5 с), `POST …/board` |
 | Vote (на странице игрока, `phase === "vote"`) | `POST /api/cases/{id}/vote` |
 | Reveal (`phase === "reveal"`) | `GET /api/cases/{id}/reveal` |
-| Paywall `/paywall?case_id=…` | `GET /api/plans` → `POST /api/checkout` → редирект на Stripe → `GET /api/checkout/{session_id}` |
+| Reveal → «Next case» | `next_access` из `/me` или `/reveal`: оплачено → `POST /api/cases/{id}/next`, нет → на Paywall |
+| Paywall `/paywall?case_id=…` | `GET /api/plans` → `POST /api/checkout` → редирект на Stripe → `GET /api/checkout/{session_id}` → `POST /api/cases/{id}/next` |
 
 Аккаунтов нет. Токен игрока и токен ведущего приходят в query-параметре `token` из ссылки,
 фронт просто пробрасывает его в API. Ссылки уже полные (домен из `PUBLIC_WEB_URL` бэкенда).
@@ -112,11 +113,34 @@ export interface MeOut extends CaseCommon {
   typing: string[];       // имена ИИ-напарников, которые «печатают» → индикатор
   players: PlayerRow[];
   my_vote: number | null; // id подозреваемого
+  crew: Crew;             // всегда
+  next_case?: { case_id: string; url: string | null } | null; // только в reveal
+  next_access?: NextAccess;                                   // только в reveal
+}
+
+// Компания друзей, которая играет дело за делом (механика возврата)
+export interface Crew {
+  case_number: number;    // «Case #2» — какое это дело компании
+  cases_played: number;   // законченных дел
+  cases_solved: number;   // раскрытых (половина людей назвала виновного)
+  streak: number;         // раскрыто подряд — «🔥 2 in a row»
+  history: { case_id: string; title: string; culprit: string; solved: boolean }[];
+  members: { name: string; is_ai: boolean; played: number; correct: number }[];
+}
+
+export interface NextAccess {
+  requires_payment: boolean; // true → кнопка ведёт на /paywall?case_id=…
+  paid: boolean;
+  plan: "case" | "monthly" | null;
+  payments_enabled: boolean;
 }
 
 export interface HostOut extends CaseCommon {
   players: PlayerRow[];   // с token и url — для QR
   votes_count: number;
+  crew: Crew;
+  next_case?: { case_id: string; url: null; host_url: string } | null; // в reveal
+  next_access?: NextAccess;
 }
 
 export interface RevealOut {
@@ -131,6 +155,9 @@ export interface RevealOut {
     worlds_left: number;  // сколько возможных миров осталось
   }[];
   votes: { player: string; suspect: string; correct: boolean }[];
+  crew: Crew;
+  next_case_id: string | null;
+  next_access: NextAccess;
   stats: {
     worlds_total: number;   // 1 728 000
     worlds_public: number;  // после публичной завязки
@@ -271,6 +298,22 @@ export interface PaymentOut {
 Вау-момент демо: проиграть `chain` по шагу (≈1 с на улику) — карточки подозреваемых
 зачёркиваются по `eliminated`, счётчик `worlds_left` тает от 1 728 000 до финала, в конце
 остаётся `culprit`. Подпись под каждым шагом: «from Ann». Затем `votes` — кто угадал.
+Под развязкой — рекорд компании из `crew` и кнопка «Next case» (см. ниже).
+
+### `POST /api/cases/{id}/next` → 201 `CreateCaseOut & {theme, you}`
+Механика возврата: после развязки та же компания открывает следующее дело.
+`{"token": "<токен игрока этого дела>"}` (или `{"host_token": "…"}`), необязательно `"theme"`.
+- Те же места (имена, ИИ-напарники с теми же персонами), новая загадка, следующая тема по
+  кругу (Lake House → Office Party → …).
+- `you` — твоё приглашение в новом деле: `window.location.href = you.url`.
+- Идемпотентно: если кто-то уже открыл следующее дело, все получают его же.
+- Остальным ничего пересылать не нужно: в их старой ссылке `/me` отдаёт `next_case.url` —
+  личную ссылку в новое дело (показать «Case #2 is open → Join»).
+- 409 — дело ещё не закончено; 403 — неверный токен.
+- **402 — нужна оплата:** первое дело бесплатно, следующее открывается после оплаты этого
+  дела ($12) или если в компании есть подписка Casefile Club ($7.99/мес, тогда все следующие
+  бесплатно). Заранее видно по `next_access.requires_payment`. Если Stripe на бэкенде не
+  настроен, оплата не требуется.
 
 ### Оплата (Stripe test mode)
 
@@ -282,6 +325,9 @@ export interface PaymentOut {
 - Stripe возвращает на `/paywall?case_id=…&checkout=success&session_id=…`
   (или `checkout=canceled`). На этой странице вызвать `GET /api/checkout/{session_id}` →
   `PaymentOut` (подтверждает оплату, даже если вебхук опоздал).
+- После `paid: true` кнопка «Start the next case» вызывает `POST /api/cases/{case_id}/next`
+  (нужен токен игрока — передать его в `/paywall?case_id=…&token=…`) и ведёт на `you.url`.
+  Сейчас эта кнопка ведёт на `/#create` — заменить.
 - `GET /api/cases/{id}/payment` → `PaymentOut` — оплачено ли дело.
 - 503, если Stripe на бэкенде не настроен.
 - Тестовая карта: `4242 4242 4242 4242`, любая будущая дата, любой CVC.
@@ -312,6 +358,7 @@ UI (Диас): кнопка «Try a demo case», аватар ИИ с помет
 
 | Код | Когда | Что делать на фронте |
 |---|---|---|
+| 402 | следующее дело без оплаты | на `/paywall?case_id=…` |
 | 403 | неверный `token` / `host_token`; чужая улика в `fact_id` | «Ссылка недействительна» |
 | 404 | дело не найдено | «Дело не найдено» |
 | 409 | действие не в той фазе (`vote` раньше времени, `reveal` до конца) | обновить состояние через `/me` |
