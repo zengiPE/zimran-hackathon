@@ -33,15 +33,18 @@ npm run dev                       # web на :3000, api на :8000
 
 - Production: фронт https://zimran-hackathon-web.vercel.app, API https://zimran-hackathon-api.vercel.app
 
-Два проекта в личном Vercel (Hobby). Деплоит GitHub Actions (`.github/workflows/deploy.yml`) токеном владельца из секрета репо `ACTIONS` (Vercel access token), поэтому пушить может любой участник. Собственный Git-автодеплой Vercel отключён (`git.deploymentEnabled: false` в `vercel.json`), потому что на Hobby он блокирует коммиты других участников.
+Два проекта в личном Vercel владельца репо (Hobby). На Hobby Vercel деплоит только коммиты владельца, поэтому:
+
+1. Каждый работает в своей ветке (`feat/<что>`) и открывает PR в `main`. **Напрямую в `main` не пушим.**
+2. Владелец (`zengiPE`) мерджит PR на GitHub кнопкой **«Create a merge commit»** (squash/rebase в репо выключены). Автор merge-коммита — владелец, поэтому Vercel его деплоит.
+3. Ветки, кроме `main`, не деплоятся (`git.deploymentEnabled` в `vercel.json`): preview-ссылок нет, проверяем локально через `npm run dev`.
 
 | Проект | Root | Что |
 |---|---|---|
 | `zimran-hackathon-web` | `web/` | Next.js; проксирует `/api/*` на бэкенд по `API_URL` |
 | `zimran-hackathon-api` | `api/` | FastAPI как Vercel Function (`app/main.py`, до 60 с на запрос) |
 
-- Push в `main` → production-деплой обоих проектов.
-- Push в любую другую ветку → preview-деплой; если по ветке открыт PR, ссылка придёт комментарием. Preview фронта ходит в production API.
+- Merge в `main` → production-деплой обоих проектов (1–2 минуты).
 - Секреты (ключи LLM и т.п.) добавляются в Vercel → Project → Settings → Environment Variables, не в код.
 - Новые переменные `API_URL` применяются только после передеплоя (читаются при сборке).
 
