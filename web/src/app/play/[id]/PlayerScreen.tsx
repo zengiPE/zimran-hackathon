@@ -139,7 +139,11 @@ export function PlayerScreen() {
       // Show the post right away, without waiting for the next poll.
       await mutate((d) => (d ? { ...d, board: [...d.board, fresh] } : d), { revalidate: false });
       // Bring the new post into view above the pinned composer.
-      requestAnimationFrame(() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }));
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+        // Laptop layout: the board column scrolls on its own.
+        document.querySelector(".cf-play__side")?.scrollTo({ top: 1e6, behavior: "smooth" });
+      });
       // AI teammates start "typing" a reply right away: refresh soon to show it.
       if (aiApi) setTimeout(() => void mutate(), 600);
     } catch (err) {
@@ -180,123 +184,129 @@ export function PlayerScreen() {
     await mutate();
   }
 
+  // Phones: one column. Laptops (1024px+): case on the left, the board on the right.
   return (
-    <Screen>
-      {demo && (
-        <DemoBar
-          seats={demo.invites}
-          current={me.me.name}
+    <Screen className="cf-play">
+      <div className="cf-play__col cf-play__main">
+        {demo && (
+          <DemoBar
+            seats={demo.invites}
+            current={me.me.name}
+            day={me.day}
+            daysTotal={me.days_total}
+            phase={me.phase}
+            onViewAs={viewAs}
+            onNextDay={demoNextDay}
+            onHint={demoHint}
+          />
+        )}
+
+        {viewingAi && (
+          <p className="cf-error" role="status">
+            You&apos;re looking at {me.me.name}&apos;s screen. {me.me.name} is an AI teammate: switch back to
+            yourself to post or vote.
+          </p>
+        )}
+
+        <CaseHeader
+          title={me.title}
           day={me.day}
           daysTotal={me.days_total}
           phase={me.phase}
-          onViewAs={viewAs}
-          onNextDay={demoNextDay}
-          onHint={demoHint}
+          nextUnlockAt={me.next_unlock_at}
+          demo={me.demo}
+          playersCount={me.players.length}
+          openedCount={opened}
+          caseNumber={me.crew?.case_number}
         />
-      )}
 
-      {viewingAi && (
-        <p className="cf-error" role="status">
-          You&apos;re looking at {me.me.name}&apos;s screen. {me.me.name} is an AI teammate: switch back to
-          yourself to post or vote.
-        </p>
-      )}
-
-      <CaseHeader
-        title={me.title}
-        day={me.day}
-        daysTotal={me.days_total}
-        phase={me.phase}
-        nextUnlockAt={me.next_unlock_at}
-        demo={me.demo}
-        playersCount={me.players.length}
-        openedCount={opened}
-        caseNumber={me.crew?.case_number}
-      />
-
-      <Drawer title="Case brief" defaultOpen={briefOpen} bodyClassName="cf-stack">
-        {paragraphs(me.intro).map((p) => (
-          <p key={p} className="m-0">
-            {p}
-          </p>
-        ))}
-      </Drawer>
-
-      {me.phase === "vote" && viewingAi ? (
-        <section ref={todayRef} className="cf-stack scroll-mt-4">
-          <h2 className="cf-heading">{caseCopy(me.title).question}</h2>
-          <p className="m-0">
-            {me.my_vote !== null
-              ? `${me.me.name} voted for ${me.suspects.find((s) => s.id === me.my_vote)?.name ?? "someone"}.`
-              : `${me.me.name} hasn't voted yet.`}
-          </p>
-        </section>
-      ) : me.phase === "vote" ? (
-        <section ref={todayRef} className="scroll-mt-4">
-          <VotePicker
-            key={myToken}
-            question={caseCopy(me.title).question}
-            suspects={me.suspects}
-            myVote={me.my_vote}
-            votedCount={voted}
-            playersCount={me.players.length}
-            onVote={vote}
-          />
-        </section>
-      ) : (
-        <section ref={todayRef} className="cf-stack scroll-mt-4" aria-labelledby="today">
-          <h2 className="cf-heading" id="today">
-            Today&apos;s evidence
-          </h2>
-          {today ? (
-            <div key={today.id} className="cf-fade cf-stack">
-              <ClueCard clue={today} exhibit={exhibit(today.id)} isNew />
-              {canShare && <ShareClue shared={sharedIds.has(today.id)} onShare={() => post("", today.id)} />}
-            </div>
-          ) : (
-            <p className="cf-caption">No clue for you today. Check the board.</p>
-          )}
-        </section>
-      )}
-
-      {earlier.length > 0 && (
-        <Drawer title={`Your earlier clues (${earlier.length})`} bodyClassName="cf-stack">
-          {earlier.map((c) => (
-            <div key={c.id} className="cf-stack">
-              <ClueCard clue={c} exhibit={exhibit(c.id)} />
-              {canShare && <ShareClue shared={sharedIds.has(c.id)} onShare={() => post("", c.id)} />}
-            </div>
+        <Drawer title="Case brief" defaultOpen={briefOpen} bodyClassName="cf-stack">
+          {paragraphs(me.intro).map((p) => (
+            <p key={p} className="m-0">
+              {p}
+            </p>
           ))}
         </Drawer>
-      )}
 
-      <Drawer title="Your notebook">
-        <Notebook
-          key={myToken}
-          suspects={me.suspects}
-          labels={me.labels}
-          storageKey={`notebook:${id}:${myToken}`}
-          clues={notebookClues}
-        />
-      </Drawer>
+        {me.phase === "vote" && viewingAi ? (
+          <section ref={todayRef} className="cf-stack scroll-mt-4">
+            <h2 className="cf-heading">{caseCopy(me.title).question}</h2>
+            <p className="m-0">
+              {me.my_vote !== null
+                ? `${me.me.name} voted for ${me.suspects.find((s) => s.id === me.my_vote)?.name ?? "someone"}.`
+                : `${me.me.name} hasn't voted yet.`}
+            </p>
+          </section>
+        ) : me.phase === "vote" ? (
+          <section ref={todayRef} className="scroll-mt-4">
+            <VotePicker
+              key={myToken}
+              question={caseCopy(me.title).question}
+              suspects={me.suspects}
+              myVote={me.my_vote}
+              votedCount={voted}
+              playersCount={me.players.length}
+              onVote={vote}
+            />
+          </section>
+        ) : (
+          <section ref={todayRef} className="cf-stack scroll-mt-4" aria-labelledby="today">
+            <h2 className="cf-heading" id="today">
+              Today&apos;s evidence
+            </h2>
+            {today ? (
+              <div key={today.id} className="cf-fade cf-stack">
+                <ClueCard clue={today} exhibit={exhibit(today.id)} isNew />
+                {canShare && <ShareClue shared={sharedIds.has(today.id)} onShare={() => post("", today.id)} />}
+              </div>
+            ) : (
+              <p className="cf-caption">No clue for you today. Check the board.</p>
+            )}
+          </section>
+        )}
 
-      {me.shared_clues.length > 0 && (
-        <section className="cf-stack" aria-labelledby="shared">
-          <h2 className="cf-heading" id="shared">
-            Opened for everyone
-          </h2>
-          {me.shared_clues.map((c) => (
-            <ClueCard key={c.id} clue={c} shared />
-          ))}
-        </section>
-      )}
+        {earlier.length > 0 && (
+          <Drawer title={`Your earlier clues (${earlier.length})`} bodyClassName="cf-stack">
+            {earlier.map((c) => (
+              <div key={c.id} className="cf-stack">
+                <ClueCard clue={c} exhibit={exhibit(c.id)} />
+                {canShare && <ShareClue shared={sharedIds.has(c.id)} onShare={() => post("", c.id)} />}
+              </div>
+            ))}
+          </Drawer>
+        )}
 
-      <Drawer title={`Players (${me.players.length})`}>
-        <Roster players={me.players} phase={me.phase} myIdx={me.me.idx} />
-      </Drawer>
+        <Drawer title="Your notebook">
+          <Notebook
+            key={myToken}
+            suspects={me.suspects}
+            labels={me.labels}
+            storageKey={`notebook:${id}:${myToken}`}
+            clues={notebookClues}
+          />
+        </Drawer>
 
-      <Board posts={me.board} myName={me.me.name} typing={me.typing} />
-      {!viewingAi && <Composer pinned onPost={(text) => post(text)} />}
+        {me.shared_clues.length > 0 && (
+          <section className="cf-stack" aria-labelledby="shared">
+            <h2 className="cf-heading" id="shared">
+              Opened for everyone
+            </h2>
+            {me.shared_clues.map((c) => (
+              <ClueCard key={c.id} clue={c} shared />
+            ))}
+          </section>
+        )}
+
+        <Drawer title={`Players (${me.players.length})`}>
+          <Roster players={me.players} phase={me.phase} myIdx={me.me.idx} />
+        </Drawer>
+
+      </div>
+
+      <div className="cf-play__col cf-play__side">
+        <Board posts={me.board} myName={me.me.name} typing={me.typing} />
+        {!viewingAi && <Composer pinned onPost={(text) => post(text)} />}
+      </div>
     </Screen>
   );
 }

@@ -354,3 +354,52 @@ a.cf-btn:focus-visible {
   align-items: center;
   gap: var(--space-2);
 }
+
+/* ---------- Laptop layout (1024px+) ----------
+   Phones keep the one 480px column from the design system. On a laptop the landing
+   and the player screen use two columns instead of a phone floating in empty space. */
+.cf-landing__intro {
+  display: grid;
+  gap: var(--space-6);
+}
+.cf-play__col {
+  display: contents; /* phones: the columns melt into the one-column screen */
+}
+@media (min-width: 1024px) {
+  .cf-screen.cf-landing,
+  .cf-screen.cf-play {
+    max-width: 1120px;
+    column-gap: 48px;
+    align-items: start;
+    padding-bottom: var(--space-6);
+  }
+  .cf-screen.cf-landing {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 480px);
+  }
+  .cf-landing__form {
+    position: sticky;
+    top: var(--space-6);
+  }
+  .cf-screen.cf-play {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
+  }
+  .cf-play__col {
+    display: grid;
+    gap: var(--space-6);
+    align-content: start;
+    min-width: 0;
+  }
+  /* The board stays in view and scrolls on its own; the composer sits at its bottom. */
+  .cf-play__side {
+    position: sticky;
+    top: var(--space-6);
+    max-height: calc(100dvh - 2 * var(--space-6));
+    overflow-y: auto;
+    padding: 0 var(--space-2);
+  }
+  .cf-play__side .cf-composer--bar {
+    margin: 0;
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
