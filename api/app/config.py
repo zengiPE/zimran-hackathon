@@ -14,10 +14,15 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     openai_api_key: str = ""
 
-    # Postgres in production (Neon/Supabase URL is fine as-is). Empty = local SQLite file.
-    database_url: str = ""
-    # Base URL of the web app, used to build invite links (empty = relative links).
-    web_base_url: str = ""
+    # Database. Locally a SQLite file; on Vercel set DATABASE_URL to Postgres (Neon/Supabase):
+    # serverless functions don't keep files between requests.
+    database_url: str = "sqlite:///./casefile.db"
+
+    # Stripe (test mode keys: sk_test_..., whsec_...)
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+    # The web app origin: Stripe Checkout returns here, invite links point here
+    public_web_url: str = "http://localhost:3000"
 
     @property
     def cors_origin_list(self) -> list[str]:

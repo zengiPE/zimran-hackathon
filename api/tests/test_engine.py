@@ -11,9 +11,10 @@ import os
 
 import pytest
 
-from app.engine import analyze, explain, generate_case
+from app.engine import analyze, explain, generate_case, public_facts
 from app.engine.facts import Fact
 from app.engine.solver import world_space
+from app.story import THEMES
 
 SEEDS = int(os.environ.get("ENGINE_SEEDS", "300"))
 SIZES = [(3, 5), (4, 3), (4, 5), (5, 4), (6, 3)]
@@ -25,13 +26,15 @@ def reverify(case: dict) -> dict:
     for c in case["clues"]:
         grid[c["player"]][c["day"] - 1] = Fact.from_dict(c["fact"])
     truth_index = w.world_index(case["solution"]["truth"])
-    return analyze(w, case["crime_room"], case["solution"]["culprit"], truth_index, grid)
+    return analyze(w, case["crime_room"], case["solution"]["culprit"], truth_index, grid,
+                   public_facts(case))
 
 
 @pytest.mark.parametrize("seed", range(SEEDS))
 def test_case_guarantees(seed: int) -> None:
     players, days = SIZES[seed % len(SIZES)]
-    case = generate_case(seed, players, days)
+    theme = sorted(THEMES)[seed % len(THEMES)]
+    case = generate_case(seed, players, days, theme=theme)
     report = reverify(case)
     assert report["ok"], report
     assert len(case["clues"]) == players * days
@@ -50,10 +53,21 @@ def test_small_cast_for_demo() -> None:
     assert reverify(case)["ok"]
 
 
-def test_truth_matches_culprit() -> None:
+def test_truth_matches_culprit_and_incident() -> None:
     case = generate_case(5, 4, 3)
     truth = case["solution"]["truth"]
-    assert truth["room"][case["solution"]["culprit"]] == case["crime_room"]
+    culprit = case["solution"]["culprit"]
+    assert truth["room"][culprit] == case["crime_room"]
+    assert truth["time"][culprit] == case["crime_time"]
+    room, time = case["labels"]["room"][case["crime_room"]], case["labels"]["time"][case["crime_time"]]
+    assert room in case["intro"] and time in case["intro"]
+
+
+def test_clue_mentions_appear_in_text() -> None:
+    case = generate_case(9, 5, 4)
+    for c in case["clues"]:
+        for m in c["mentions"]:
+            assert m in c["text"], (m, c["text"])
 
 
 def test_explain_chain_ends_on_culprit() -> None:
@@ -63,6 +77,7 @@ def test_explain_chain_ends_on_culprit() -> None:
     assert chain[-1]["remaining"] == [case["solution"]["culprit"]]
     eliminated = [s for step in chain for s in step["eliminated"]]
     assert sorted(eliminated + chain[-1]["remaining"]) == list(range(len(case["suspects"])))
+    assert case["report"]["worlds_public"] < case["report"]["worlds_total"]
 
 
 def test_solver_counts_worlds() -> None:

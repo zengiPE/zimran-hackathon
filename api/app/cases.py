@@ -8,18 +8,19 @@ from __future__ import annotations
 
 import secrets
 from datetime import UTC, datetime, timedelta
-from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
 from app.config import get_settings
-from app.db import BoardPost, Case, ClueOpen, Player, Vote, get_session, utcnow
-from app.engine import THEMES, GenerationError, explain, generate_case, theme_list
+from app.db import SessionDep
+from app.engine import GenerationError, explain, generate_case
+from app.events import log_event
+from app.game_models import BoardPost, Case, ClueOpen, Player, Vote, utcnow
+from app.story import THEMES, ClueFact, get_theme, narrate_case
 
-router = APIRouter(prefix="/api")
-SessionDep = Annotated[Session, Depends(get_session)]
+router = APIRouter(prefix="/api", tags=["cases"])
 
 
 def _aware(dt: datetime) -> datetime:
@@ -34,7 +35,7 @@ def _iso(dt: datetime) -> str:
 # ---------- request bodies ----------
 
 class CreateCase(BaseModel):
-    theme: str = "lake_house"
+    theme: str = "lake-house"
     players: list[str] = Field(min_length=3, max_length=6)
     demo: bool = False
     days: int | None = Field(default=None, ge=2, le=5)
@@ -83,7 +84,7 @@ def phase_of(day: int, days: int, joined: set[int], votes: dict[int, int]) -> st
 # ---------- helpers ----------
 
 def _url(path: str) -> str:
-    return get_settings().web_base_url.rstrip("/") + path
+    return get_settings().public_web_url.rstrip("/") + path
 
 
 def _load(session: Session, case_id: str) -> Case:
@@ -141,6 +142,7 @@ class _Snapshot:
             "day": c["day"],
             "text": c["text"],
             "story": c.get("story"),
+            "format": c.get("format"),
             "fact": c["fact"],
             "from": self.names[c["player"]],
         }
@@ -181,7 +183,17 @@ class _Snapshot:
 
 @router.get("/themes")
 def themes() -> list[dict]:
-    return theme_list()
+    return [{"id": t.id, "title": t.title, "tagline": t.tagline} for t in THEMES.values()]
+
+
+def _narrate(data: dict) -> None:
+    """Restyle every clue once, at creation (LLM if configured, templates otherwise)."""
+    theme = get_theme(data["theme"])
+    facts = [ClueFact(c["id"], c["text"], tuple(c["mentions"])) for c in data["clues"]]
+    for clue, out in zip(data["clues"], narrate_case(theme, facts)):
+        clue["story"] = out.text
+        clue["format"] = out.format_label
+        clue["story_source"] = out.source
 
 
 @router.post("/cases", status_code=201)
@@ -204,6 +216,7 @@ def create_case(body: CreateCase, session: SessionDep) -> dict:
             raise HTTPException(422, str(e)) from e
     if data is None:
         raise HTTPException(500, "could not build a case, try again")
+    _narrate(data)
 
     case = Case(id=secrets.token_urlsafe(6), host_token=secrets.token_urlsafe(12),
                 data=data, demo=body.demo)
@@ -212,6 +225,8 @@ def create_case(body: CreateCase, session: SessionDep) -> dict:
                for i, n in enumerate(names)]
     session.add_all(players)
     session.commit()
+    log_event(session, "created", case.id, actor="host", players=len(names), days=days,
+              theme=body.theme, demo=body.demo)
     return {
         "case_id": case.id,
         "host_token": case.host_token,
@@ -230,19 +245,21 @@ def me(case_id: str, token: str,session: SessionDep) -> dict:
 
     mine = [c for c in snap.data["clues"]
             if c["player"] == player.idx and c["day"] <= snap.clue_day]
-    changed = False
-    for c in mine:  # viewing your clue counts as opening it
-        if c["id"] not in snap.opened:
-            session.add(ClueOpen(case_id=case.id, clue_id=c["id"]))
-            snap.opened.add(c["id"])
-            changed = True
+    events: list[tuple[str, dict]] = []
     if player.joined_at is None:
         player.joined_at = utcnow()
         session.add(player)
         snap.joined.add(player.idx)
-        changed = True
-    if changed:
+        events.append(("joined", {}))
+    for c in mine:  # viewing your clue counts as opening it
+        if c["id"] not in snap.opened:
+            session.add(ClueOpen(case_id=case.id, clue_id=c["id"]))
+            snap.opened.add(c["id"])
+            events.append(("clue_opened", {"clue_id": c["id"], "day": c["day"]}))
+    if events:
         session.commit()
+        for kind, extra in events:
+            log_event(session, kind, case.id, actor=player.name, **extra)
 
     shared_ids = set(case.shared)
     shared = [c for c in snap.data["clues"] if c["player"] != player.idx and c["id"] in shared_ids]
@@ -295,8 +312,12 @@ def vote(case_id: str, body: VoteIn, session: SessionDep) -> dict:
     else:
         session.add(Vote(case_id=case.id, player_idx=player.idx, suspect=body.suspect))
     session.commit()
+    log_event(session, "voted", case.id, actor=player.name, suspect=body.suspect)
     snap.votes[player.idx] = body.suspect
-    return {"ok": True, "phase": phase_of(snap.day, snap.days, snap.joined, snap.votes)}
+    phase = phase_of(snap.day, snap.days, snap.joined, snap.votes)
+    if phase == "reveal":
+        log_event(session, "revealed", case.id, actor=player.name)
+    return {"ok": True, "phase": phase}
 
 
 @router.post("/cases/{case_id}/advance")
@@ -361,6 +382,7 @@ def reveal(case_id: str, session: SessionDep) -> dict:
                   for p, s in sorted(snap.votes.items())],
         "stats": {
             "worlds_total": data["report"]["worlds_total"],
+            "worlds_public": data["report"]["worlds_public"],
             "worlds_left": data["report"]["worlds_left"],
             "candidates_by_day": data["report"]["candidates_by_day"],
             "seed": data["seed"],

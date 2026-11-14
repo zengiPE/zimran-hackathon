@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.cases import router as cases_router
 from app.config import get_settings
+from app.payments.routes import router as payments_router
 
 settings = get_settings()
 
@@ -17,6 +18,9 @@ app.add_middleware(
 )
 
 app.include_router(cases_router)
+
+
+app.include_router(payments_router)
 
 
 @app.get("/api/health")

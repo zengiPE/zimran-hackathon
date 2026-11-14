@@ -30,7 +30,7 @@ def advance(case: dict) -> dict:
 
 def test_themes() -> None:
     ids = {t["id"] for t in client.get("/api/themes").json()}
-    assert "lake_house" in ids
+    assert ids == {"lake-house", "office-party"}
 
 
 def test_full_demo_game() -> None:
@@ -44,6 +44,9 @@ def test_full_demo_game() -> None:
     assert all(len(s["my_clues"]) == 1 for s in states)
     assert all(s["phase"] == "play" and s["day"] == 1 for s in states)
     assert "solution" not in states[0] and "key" not in states[0]["my_clues"][0]
+    clue = states[0]["my_clues"][0]
+    assert clue["story"] and clue["format"]  # template narration without an LLM key
+    assert case["invites"][0]["url"].startswith("https://web.test/play/")
 
     host = client.get(f"/api/cases/{case['case_id']}/host",
                       params={"token": case["host_token"]}).json()
@@ -81,6 +84,7 @@ def test_full_demo_game() -> None:
     assert len(rev["truth"]) == 5
     assert len(rev["votes"]) == 4
     assert rev["stats"]["worlds_total"] == 120**3
+    assert rev["stats"]["worlds_public"] < rev["stats"]["worlds_total"]
 
 
 def test_hint_shares_a_key_clue() -> None:

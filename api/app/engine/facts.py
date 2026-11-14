@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 
 import numpy as np
@@ -21,12 +22,13 @@ KIND_WEIGHT = {
     "is": 3.0,
 }
 
-SUBJECT = {"room": "the person in the {}", "time": "the person who arrived at {}",
-           "item": "the person with the {}"}
-PRED = {"room": "was in the {}", "time": "arrived at {}", "item": "had the {}"}
-NEG = {"room": "was not in the {}", "time": "did not arrive at {}", "item": "did not have the {}"}
-EITHER = {"room": "was in either the {} or the {}", "time": "arrived at either {} or {}",
-          "item": "had either the {} or the {}"}
+# Each suspect was seen once: in one place, at one time, holding one item.
+# Room phrases get "in the Kitchen" / "on the Porch" from the theme (at_room).
+SUBJECT = {"room": "the person {}", "time": "the person seen at {}", "item": "the person with {}"}
+PRED = {"room": "was {}", "time": "was seen at {}", "item": "had {}"}
+NEG = {"room": "was not {}", "time": "was not seen at {}", "item": "did not have {}"}
+EITHER = {"room": "was either {} or {}", "time": "was seen at either {} or {}",
+          "item": "had either {} or {}"}
 
 
 @dataclass(frozen=True)
@@ -68,12 +70,26 @@ class Fact:
             return t_owner < t_other if k == "before_link" else t_owner > t_other
         raise ValueError(f"unknown fact kind {k}")
 
-    def text(self, names: list[str], labels: dict[str, list[str]]) -> str:
-        """Plain English sentence. The narrative layer rewrites it; this stays the source of truth."""
+    def mentions(self, names: list[str], labels: dict[str, list[str]]) -> tuple[str, ...]:
+        """Names and values the sentence asserts (the narrator must keep each one verbatim)."""
+        k = self.kind
+        if k in ("is", "not"):
+            return names[self.s], labels[self.a][self.v]
+        if k == "either":
+            return names[self.s], labels[self.a][self.v], labels[self.a][self.v2]
+        if k in ("link", "unlink"):
+            return labels[self.a][self.v], labels[self.a2][self.v2]
+        if k == "before":
+            return names[self.s], names[self.s2]
+        return labels[self.a][self.v], names[self.s2]
+
+    def text(self, names: list[str], labels: dict[str, list[str]],
+             at_room: Callable[[str], str] = lambda r: f"in the {r}") -> str:
+        """Plain English sentence. The narrative layer restyles it; this stays the source of truth."""
         k = self.kind
 
         def lab(a: str, v: int) -> str:
-            return labels[a][v]
+            return at_room(labels[a][v]) if a == "room" else labels[a][v]
 
         if k == "is":
             out = f"{names[self.s]} {PRED[self.a].format(lab(self.a, self.v))}"
@@ -89,11 +105,13 @@ class Fact:
             out = f"{SUBJECT[self.a].format(lab(self.a, self.v))} " + NEG[self.a2].format(
                 lab(self.a2, self.v2))
         elif k == "before":
-            out = f"{names[self.s]} arrived before {names[self.s2]}"
+            out = f"{names[self.s]} was seen earlier than {names[self.s2]}"
         elif k == "before_link":
-            out = f"{SUBJECT[self.a].format(lab(self.a, self.v))} arrived before {names[self.s2]}"
+            out = f"{SUBJECT[self.a].format(lab(self.a, self.v))} was seen earlier than " \
+                  f"{names[self.s2]}"
         elif k == "after_link":
-            out = f"{SUBJECT[self.a].format(lab(self.a, self.v))} arrived after {names[self.s2]}"
+            out = f"{SUBJECT[self.a].format(lab(self.a, self.v))} was seen later than " \
+                  f"{names[self.s2]}"
         else:
             raise ValueError(f"unknown fact kind {k}")
         return out[0].upper() + out[1:] + "."
