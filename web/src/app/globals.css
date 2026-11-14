@@ -1,26 +1,88 @@
 @import "tailwindcss";
+@import "./tokens.css";
+@import "./casefile.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/*
+  Tailwind is only for layout (flex, grid, gaps, widths).
+  Colors here are just links to our tokens, so bg-folder or text-ink work too.
+*/
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-folder: var(--folder);
+  --color-folder-deep: var(--folder-deep);
+  --color-card: var(--card);
+  --color-cork: var(--cork);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-stamp: var(--stamp);
+  --color-string: var(--string);
+  --color-marker: var(--marker);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--folder);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--folder);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 24px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+  The screen is a one-column grid. Without this, a wide child (the Notebook
+  table) stretches the column past the phone width instead of scrolling inside.
+*/
+.cf-screen {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/*
+  Reveal: a real case has ~12 clues, so strings would cross the notes' text.
+  Paper sits above the strings; they show in the gaps and end at the pin.
+*/
+.cf-reveal__clues,
+.cf-reveal__suspects {
+  position: relative;
+  z-index: 1;
+}
+
+/* Vote: five suspects as 3 + 2, the second row centered (like the Reveal). */
+@media (max-width: 639px) {
+  .cf-vote__grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .cf-vote__grid > .cf-suspect {
+    flex: 0 0 calc((100% - 2 * var(--space-3)) / 3);
+  }
+}
+
+/* Links inside paper read as the interactive color. */
+a {
+  color: var(--stamp);
+}
+
+/* Error box: ink on card, never red (design/README.md, Color). */
+.cf-error {
+  background: var(--card);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-paper);
+  padding: var(--space-3) var(--space-4);
+  margin: 0;
+}
+
+/* Paper placeholder while data loads. */
+.cf-skeleton {
+  background: var(--card);
+  border-radius: var(--radius-paper);
+  box-shadow: var(--shadow-paper);
+  opacity: 0.6;
+  min-height: 96px;
 }

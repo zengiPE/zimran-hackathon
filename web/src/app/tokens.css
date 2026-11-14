@@ -1,0 +1,47 @@
+/* Casefile design tokens, from design/tokens.json. Same names as the tokens. */
+
+:root {
+  /* Color */
+  --folder: #e9d7a9;
+  --folder-deep: #d6bf85;
+  --card: #fdfcf7;
+  --rule-blue: #a9c1dc;
+  --bubble: #e3e6ea;
+  --cork: #cdb083;
+  --ink: #1d1b19;
+  --ink-muted: #4f473d;
+  --stamp: #2e4a9a;
+  --on-stamp: var(--card);
+  --string: #b4232a;
+  --marker: #f2d64b;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-10: 40px;
+
+  /* Radius */
+  --radius-none: 0;
+  --radius-paper: 3px;
+  --radius-bubble: 18px;
+  --radius-round: 999px;
+
+  /* Shadow */
+  --shadow-paper: 0 1px 0 rgba(29, 27, 25, 0.1), 0 8px 16px -8px rgba(29, 27, 25, 0.45);
+  --shadow-lifted: 0 2px 0 rgba(29, 27, 25, 0.1), 0 18px 32px -12px rgba(29, 27, 25, 0.55);
+  --shadow-key: 0 3px 0 #1d1b19;
+}
+
+/*
+  Font stacks. layout.tsx loads the real fonts with next/font and sets
+  --font-display, --font-body and --font-type on <html>. These are only the
+  fallbacks: :where() has zero specificity, so next/font always wins.
+*/
+:where(:root) {
+  --font-display: "Big Shoulders Display", "Arial Narrow", sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, sans-serif;
+  --font-type: "Courier Prime", "Courier New", monospace;
+}
