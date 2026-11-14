@@ -5,10 +5,10 @@ description = "Zimran hackathon — backend API"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "anthropic>=2.8.0",
     "fastapi[standard]>=0.162.7",
     "httpx>=0.28.1",
     "numpy>=2.5.4",
+    "openai>=3.51.0",
     "psycopg[binary]>=3.3.9",
     "pydantic-settings>=2.16.3",
     "python-dotenv>=1.2.4",

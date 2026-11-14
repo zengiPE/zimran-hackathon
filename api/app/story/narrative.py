@@ -22,14 +22,14 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
 
-import anthropic
+import openai
 from pydantic import BaseModel
 
+from app import llm_client
 from app.story.themes import ClueFormat, Theme
 
 log = logging.getLogger(__name__)
 
-MODEL = "claude-sonnet-5-5"  # named in the spec
 MAX_TEXT_CHARS = 320
 LLM_TIMEOUT_S = 45.0
 
@@ -169,39 +169,39 @@ def _user_prompt(theme: Theme, facts: Sequence[ClueFact]) -> str:
     )
 
 
-def _llm_texts(
-    client: anthropic.Anthropic, theme: Theme, facts: Sequence[ClueFact]
-) -> dict[str, str]:
-    response = client.beta.messages.parse(
-        model=MODEL,
-        max_tokens=16000,
-        betas=["server-side-fallback-2026-07-01"],
-        fallbacks="default",  # on a policy decline the API retries on a fallback model
-        output_config={"effort": "low"},  # short rewriting task
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": _user_prompt(theme, facts)}],
-        output_format=_LLMBatch,
+JSON_FORMAT = (
+    '\n\nReply with a JSON object only: {"clues": [{"fact_id": "...", "text": "..."}]}, '
+    "one entry per fact."
+)
+
+
+def _llm_texts(client: openai.OpenAI, theme: Theme, facts: Sequence[ClueFact]) -> dict[str, str]:
+    response = client.chat.completions.create(
+        model=llm_client.model(),
+        max_completion_tokens=8000,
+        response_format={"type": "json_object"},
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT + JSON_FORMAT},
+            {"role": "user", "content": _user_prompt(theme, facts)},
+        ],
     )
-    if response.stop_reason == "refusal" or response.parsed_output is None:
-        log.warning("narrative: no usable LLM output (stop_reason=%s)", response.stop_reason)
+    raw = llm_client.message_text(response)
+    if raw is None:
+        log.warning("narrative: no usable LLM output")
         return {}
-    return {c.fact_id: c.text.strip() for c in response.parsed_output.clues}
+    batch = _LLMBatch.model_validate_json(raw)  # ValidationError is a ValueError
+    return {c.fact_id: c.text.strip() for c in batch.clues}
 
 
-def _default_client() -> anthropic.Anthropic | None:
-    from app.config import get_settings
-
-    key = get_settings().anthropic_api_key
-    if not key:
-        return None
-    return anthropic.Anthropic(api_key=key, timeout=LLM_TIMEOUT_S, max_retries=1)
+def _default_client() -> openai.OpenAI | None:
+    return llm_client.openai_client(timeout=LLM_TIMEOUT_S, max_retries=1)
 
 
 def narrate_case(
     theme: Theme,
     facts: Sequence[ClueFact],
     *,
-    client: anthropic.Anthropic | None = None,
+    client: openai.OpenAI | None = None,
     use_llm: bool = True,
 ) -> list[ClueText]:
     """Narrate all clues of a case in one LLM call. Never raises because of the LLM.
@@ -218,7 +218,7 @@ def narrate_case(
         if client is not None:
             try:
                 texts = _llm_texts(client, theme, facts)
-            except (anthropic.APIError, ValueError) as e:  # network/API/parse problems
+            except (openai.APIError, ValueError) as e:  # network/API/parse problems
                 log.warning("narrative: LLM call failed, using templates: %s", e)
 
     out: list[ClueText] = []

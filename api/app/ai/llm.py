@@ -1,4 +1,4 @@
-"""One chat line from an AI teammate. The engine decides what it believes; Claude only words it.
+"""One chat line from an AI teammate. The engine decides what it believes; the LLM only words it.
 
 Never raises: on any API problem it returns None and the caller uses a template.
 """
@@ -9,13 +9,12 @@ import json
 import logging
 from dataclasses import dataclass
 
-import anthropic
+import openai
 
-from app.config import get_settings
+from app import llm_client
 
 log = logging.getLogger(__name__)
 
-MODEL = "claude-sonnet-5-5"  # same model as clue narration
 TIMEOUT_S = 8.0  # the player is waiting on POST /board
 MAX_CHARS = 220
 
@@ -51,11 +50,8 @@ class ReplyContext:
     x: str  # suspect to ask about (intent "ask")
 
 
-def _client() -> anthropic.Anthropic | None:
-    key = get_settings().anthropic_api_key
-    if not key:
-        return None
-    return anthropic.Anthropic(api_key=key, timeout=TIMEOUT_S, max_retries=0)
+def _client() -> openai.OpenAI | None:
+    return llm_client.openai_client(timeout=TIMEOUT_S, max_retries=0)
 
 
 def _prompt(ctx: ReplyContext) -> str:
@@ -75,19 +71,15 @@ def chat_line(ctx: ReplyContext) -> str | None:
     if client is None:
         return None
     try:
-        response = client.beta.messages.create(
-            model=MODEL,
-            max_tokens=2000,
-            betas=["server-side-fallback-2026-07-01"],
-            fallbacks="default",  # on a policy decline the API retries on a fallback model
-            output_config={"effort": "low"},
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": _prompt(ctx)}],
+        response = client.chat.completions.create(
+            model=llm_client.model(),
+            max_completion_tokens=2000,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": _prompt(ctx)},
+            ],
         )
-    except anthropic.APIError as e:
+    except openai.APIError as e:
         log.warning("ai chat: LLM call failed, using template: %s", e)
         return None
-    if response.stop_reason == "refusal":
-        return None
-    text = "".join(b.text for b in response.content if b.type == "text").strip()
-    return text or None
+    return llm_client.message_text(response)

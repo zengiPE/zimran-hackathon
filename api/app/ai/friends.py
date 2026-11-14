@@ -1,4 +1,4 @@
-"""AI teammates: deterministic moves decided by the engine, worded by templates or Claude.
+"""AI teammates: deterministic moves decided by the engine, worded by templates or the LLM.
 
 What an AI seat knows (and nothing else):
   its own clues up to today + clues shared with the group (dropouts, hints)
@@ -111,7 +111,7 @@ def template_line(persona: Persona, intent: str, rng: random.Random, poss: list[
 def write_line(data: dict, persona: Persona, intent: str, rng: random.Random,
                clues: list[dict], poss: list[str], recent: list[str], who: str,
                x: str) -> tuple[str, str]:
-    """(text, source). Claude if configured and the line passes validation, else a template."""
+    """(text, source). The LLM if configured and the line passes validation, else a template."""
     mentioned = {m for c in clues for m in c.get("mentions", [])}
     labels = data["labels"]
     public_terms = {labels["room"][data["crime_room"]], labels["time"][data["crime_time"]]}
