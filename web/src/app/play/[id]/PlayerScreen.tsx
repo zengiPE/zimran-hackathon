@@ -201,8 +201,16 @@ export function PlayerScreen() {
 
   async function demoHint() {
     if (!demo) return;
-    await askHint(id, demo.host_token);
+    const { shared } = await askHint(id, demo.host_token);
     await mutate();
+    // Your own clue never shows under "Opened for everyone" on your screen.
+    if (shared.from === me?.me.name) return "Hint: your own clue is now open for everyone.";
+    // Show where the hint went: the "Opened for everyone" section further down.
+    window.setTimeout(() => {
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      document.getElementById("shared")?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    }, 150);
+    return `Hint: ${shared.from}'s clue is now open for everyone, under Opened for everyone.`;
   }
 
   // Phones: one column. Laptops (1024px+): case on the left, the board on the right.
@@ -326,7 +334,7 @@ export function PlayerScreen() {
 
         {me.shared_clues.length > 0 && (
           <section className="cf-stack" aria-labelledby="shared">
-            <h2 className="cf-heading" id="shared">
+            <h2 className="cf-heading scroll-mt-4" id="shared">
               Opened for everyone
             </h2>
             {me.shared_clues.map((c) => (
