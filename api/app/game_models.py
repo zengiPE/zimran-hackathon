@@ -23,6 +23,10 @@ class Case(SQLModel, table=True):
     day_offset: int = 0  # days skipped by the host in demo mode
     shared: list = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
     started_at: datetime = Field(default_factory=utcnow)
+    # A crew = the same group of friends playing case after case (the retention loop).
+    group_id: str | None = Field(default=None, index=True)  # id of the crew's first case
+    prev_case_id: str | None = None
+    next_case_id: str | None = None
 
 
 class Player(SQLModel, table=True):
