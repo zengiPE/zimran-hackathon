@@ -18,11 +18,12 @@ interface Props {
 
 /** Demo controls: play every seat, move the day, ask for a hint. */
 export function DemoBar({ seats, current, day, daysTotal, phase, onViewAs, onNextDay, onHint }: Props) {
-  const [busy, setBusy] = useState(false);
+  // Which button is waiting for the server (it can take a few seconds on prod).
+  const [busy, setBusy] = useState<null | "hint" | "next">(null);
   const [note, setNote] = useState<string | null>(null);
 
   async function run(action: () => Promise<void>, hint = false) {
-    setBusy(true);
+    setBusy(hint ? "hint" : "next");
     setNote(null);
     try {
       await action();
@@ -30,12 +31,13 @@ export function DemoBar({ seats, current, day, daysTotal, phase, onViewAs, onNex
     } catch (err) {
       setNote(hint && isStatus(err, 409) ? "No hints yet." : errorText(err));
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
   const where = phase === "play" ? `Day ${day} of ${daysTotal}` : phase === "vote" ? "Voting" : "Reveal";
   const nextLabel = phase === "vote" ? "Show the reveal" : day >= daysTotal ? "Open voting" : "Next day";
+  const nextBusy = phase === "vote" ? "Opening the reveal…" : day >= daysTotal ? "Opening voting…" : `Moving to day ${day + 1}…`;
 
   return (
     <div className="cf-demobar" role="region" aria-label="Demo controls">
@@ -60,11 +62,11 @@ export function DemoBar({ seats, current, day, daysTotal, phase, onViewAs, onNex
       </div>
       {phase !== "reveal" && (
         <div className="cf-demobar__row">
-          <Button small disabled={busy || phase !== "play"} onClick={() => run(onHint, true)}>
-            Hint
+          <Button small disabled={busy !== null || phase !== "play"} onClick={() => run(onHint, true)}>
+            {busy === "hint" ? "Finding a hint…" : "Hint"}
           </Button>
-          <Button variant="primary" small disabled={busy} onClick={() => run(onNextDay)}>
-            {nextLabel}
+          <Button variant="primary" small disabled={busy !== null} onClick={() => run(onNextDay)}>
+            {busy === "next" ? nextBusy : nextLabel}
           </Button>
         </div>
       )}
