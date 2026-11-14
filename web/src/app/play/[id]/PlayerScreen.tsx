@@ -100,6 +100,10 @@ export function PlayerScreen() {
   const earlier = clues.filter((c) => c !== today).reverse(); // newest first
   const opened = me.players.filter((p) => p.opened_today).length;
   const voted = me.players.filter((p) => p.voted).length;
+  // Facts for the notebook strip: your clues and shared ones, newest first.
+  const notebookClues = [...me.my_clues, ...me.shared_clues]
+    .sort((a, b) => b.day - a.day)
+    .map((c) => ({ id: c.id, text: c.text, isNew: c.id === today?.id }));
 
   async function post(text: string) {
     try {
@@ -216,7 +220,13 @@ export function PlayerScreen() {
       )}
 
       <Drawer title="Your notebook">
-        <Notebook key={myToken} suspects={me.suspects} labels={me.labels} storageKey={`notebook:${id}:${myToken}`} />
+        <Notebook
+          key={myToken}
+          suspects={me.suspects}
+          labels={me.labels}
+          storageKey={`notebook:${id}:${myToken}`}
+          clues={notebookClues}
+        />
       </Drawer>
 
       {me.shared_clues.length > 0 && (

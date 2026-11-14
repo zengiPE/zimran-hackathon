@@ -1,11 +1,11 @@
 # Frontend TODO
 
-## Phase 5 — polish
+## Phase 5 — polish (done)
 
 General: visible focus, aria labels, buttons at least 48px, no horizontal scroll,
 no console errors, clean lint and build, a frontend section in `web/README.md`.
 
-### Notebook improvements (from the Murdle / Clues by Sam research, `research/murdle-cluesbysam.md`)
+### Notebook improvements — done (from the Murdle / Clues by Sam research, `research/murdle-cluesbysam.md`)
 
 Only ✓ and ✗ in the notebook, no "?" state (design README).
 

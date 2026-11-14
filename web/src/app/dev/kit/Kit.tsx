@@ -171,7 +171,16 @@ export function Kit() {
         </Section>
 
         <Section title="Notebook">
-          <Notebook suspects={me.suspects} labels={me.labels} storageKey="notebook:kit:demo" />
+          <Notebook
+            suspects={me.suspects}
+            labels={me.labels}
+            storageKey="notebook:kit:demo"
+            clues={[
+              { id: "a", text: clues.messageNew.text, isNew: true },
+              { id: "b", text: clues.photoTemplate.text },
+              { id: "c", text: clues.sharedOverheard.text },
+            ]}
+          />
         </Section>
 
         <Section title="Roster · play">
