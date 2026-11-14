@@ -14,6 +14,11 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     openai_api_key: str = ""
 
+    # Postgres in production (Neon/Supabase URL is fine as-is). Empty = local SQLite file.
+    database_url: str = ""
+    # Base URL of the web app, used to build invite links (empty = relative links).
+    web_base_url: str = ""
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
