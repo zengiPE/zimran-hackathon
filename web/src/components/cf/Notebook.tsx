@@ -1,6 +1,7 @@
 "use client";
 
 import clsx from "clsx";
+import { Clock, DoorOpen, Package, type LucideIcon } from "lucide-react";
 import { Fragment, useCallback, useEffect, useId, useRef, useState } from "react";
 import { dropArticle } from "@/lib/format";
 import { cellKey, deriveAutoMarks, type Group, type Mark, type Marks } from "@/lib/notebook";
@@ -13,6 +14,7 @@ const HIGHLIGHT_MS = 1500;
 const GLYPH: Record<Mark, string> = { "": "", no: "✗", yes: "✓" };
 const WORD: Record<Mark, string> = { "": "blank", no: "ruled out", yes: "confirmed" };
 const NEXT: Record<Mark, Mark> = { "": "no", no: "yes", yes: "" };
+const GROUP_ICON: Record<string, LucideIcon> = { Room: DoorOpen, Time: Clock, Item: Package };
 
 /** One row of the "Your clues" strip: the exact fact of one of your clues. */
 export interface NotebookClue {
@@ -185,6 +187,7 @@ export function Notebook({ suspects, labels, storageKey, clues }: Props) {
             aria-pressed={active === g.name}
             onClick={() => setActive(g.name as GroupName)}
           >
+            <GroupIcon name={g.name} />
             {g.name}
           </button>
         ))}
@@ -199,7 +202,10 @@ export function Notebook({ suspects, labels, storageKey, clues }: Props) {
               </th>
               {groups.map((g) => (
                 <th key={g.name} colSpan={g.values.length} scope="colgroup" data-g={g.name}>
-                  {g.name}
+                  <span className="cf-nb__groupname">
+                    <GroupIcon name={g.name} />
+                    {g.name}
+                  </span>
                 </th>
               ))}
             </tr>
@@ -280,4 +286,10 @@ export function Notebook({ suspects, labels, storageKey, clues }: Props) {
       </div>
     </div>
   );
+}
+
+/** Room, Time or Item picture next to the group's name. */
+function GroupIcon({ name }: { name: string }) {
+  const Icon = GROUP_ICON[name];
+  return Icon ? <Icon size={16} strokeWidth={1.75} aria-hidden="true" /> : null;
 }

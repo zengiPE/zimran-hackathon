@@ -6,9 +6,9 @@ watches the reveal prove why only one answer is possible.
 
 **Live:** https://zimran-hackathon-web.vercel.app (no login)
 
-## Judging? The 3-minute path
+## Judging? Your first case in 3 minutes
 
-1. Open the link and press **Try a demo case**, type your name, press **Start the demo**. You play
+1. Open the link and press **Take the case**, type your name, press **Start the demo**. You play
    with three AI teammates: Nora, Felix and Kai.
 2. Read **Today's evidence**, press **Share this clue**, tap boxes in **Your notebook**, read the board.
 3. In the dashed demo bar, press **Next day** twice, then **Open voting**.
@@ -16,7 +16,7 @@ watches the reveal prove why only one answer is possible.
 5. Press **Open the next case**: the paywall takes the Stripe test card `4242 4242 4242 4242`
    (any future date, any CVC, any ZIP).
 
-The demo is marked as a demo on screen. For a real group, use **Create case** on the landing page:
+The landing page opens on the demo case itself and repeats these steps under "New here? Your first case". The demo is marked as a demo on screen; first-visit tips on the player screen explain each part. For a real group, use **Create case** on the landing page:
 the host screen shows a QR code per player.
 
 ## How it works, and why it isn't hardcoded

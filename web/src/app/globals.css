@@ -460,6 +460,7 @@ a.cf-btn:focus-visible {
 }
 .cf-judges__list {
   margin: 0;
+  list-style: decimal; /* Tailwind's reset removes list markers */
   padding-left: var(--space-6);
   display: grid;
   gap: var(--space-2);
@@ -522,4 +523,87 @@ a.cf-btn:focus-visible {
 .cf-clue.is-used mark {
   background: none;
   color: inherit;
+}
+
+/* Landing hook: the demo case opens the page, like a case file on the desk. */
+.cf-hook__body {
+  gap: var(--space-3);
+}
+.cf-hook__story {
+  font-family: var(--font-type); /* the case talks in Courier */
+  font-size: 15px;
+  line-height: 24px;
+  margin: 0;
+}
+/* Five small polaroids in one row: who might have done it, without pushing the button down. */
+.cf-hook__suspects {
+  flex-wrap: nowrap;
+  gap: var(--space-2);
+  padding: var(--space-3) 0 var(--space-2);
+}
+.cf-hook__suspects > .cf-suspect {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: var(--space-1) var(--space-1) var(--space-2);
+}
+.cf-hook__suspects .cf-suspect__photo {
+  font-size: 26px;
+}
+.cf-hook__suspects .cf-suspect__role {
+  display: none;
+}
+.cf-hook__suspects figcaption {
+  min-height: 0;
+}
+.cf-hook__suspects .cf-suspect__name {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+/* The cover art above the pitch. */
+.cf-pitch__art {
+  width: 100%;
+  max-width: 360px;
+  height: auto;
+}
+.cv-cork { fill: var(--cork); }
+.cv-card { fill: var(--card); }
+.cv-stamp { fill: var(--stamp); }
+.cv-pin { fill: var(--string); }
+.cv-string { fill: none; stroke: var(--string); stroke-width: 2.5px; stroke-linecap: round; }
+.cv-head { stroke: var(--rule-blue); stroke-width: 2px; }
+.cv-rule { stroke: var(--rule-blue); stroke-width: 1px; }
+
+/* First-visit tip on the player screen: dashed like DemoBar, it talks about the app. */
+.cf-tip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  background: var(--card);
+  border: 2px dashed var(--ink);
+  border-radius: var(--radius-paper);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  font-size: 15px;
+  line-height: 22px;
+}
+.cf-tip .cf-btn {
+  flex: none;
+}
+
+/* Icons next to words: the clue's document type, the notebook's groups. */
+.cf-clue__kind,
+.cf-nb__groupname {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.cf-clue__kind svg {
+  flex: none;
+  color: var(--ink);
+}
+.cf-nb__tabs .cf-seg__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
 }

@@ -29,7 +29,7 @@ async function createDemo(me: string): Promise<CreateCaseOut> {
   }
 }
 
-/** "Try a demo case": asks your name, then opens your screen in a ready-made case. */
+/** "Take the case": asks your name, then opens your screen in the ready-made demo case. */
 export function TryDemo() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -65,8 +65,8 @@ export function TryDemo() {
 
   if (!open) {
     return (
-      <Button block onClick={show}>
-        Try a demo case
+      <Button variant="primary" block onClick={show}>
+        Take the case
       </Button>
     );
   }
@@ -88,7 +88,7 @@ export function TryDemo() {
         onChange={(e) => setName(e.target.value)}
         disabled={busy}
       />
-      <Button type="submit" block disabled={busy}>
+      <Button variant="primary" type="submit" block disabled={busy}>
         {busy ? "Writing your case file…" : "Start the demo"}
       </Button>
       {error && (
