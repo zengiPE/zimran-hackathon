@@ -62,6 +62,8 @@ function save(key: string, value: Saved) {
 export function Notebook({ suspects, labels, storageKey, clues }: Props) {
   const [saved, setSaved] = useState<Saved>(() => load(storageKey));
   const [cross, setCross] = useState<{ row: number; col: string } | null>(null);
+  // Narrow screens show one group at a time (no sideways scrolling); wide ones show all three.
+  const [active, setActive] = useState<"Room" | "Time" | "Item">("Room");
   const { marks, undo } = saved;
 
   const groups = [
@@ -103,7 +105,7 @@ export function Notebook({ suspects, labels, storageKey, clues }: Props) {
   }
 
   return (
-    <div className="cf-notebook">
+    <div className="cf-notebook" data-active={active}>
       {clues && clues.length > 0 && (
         <details className="cf-nb__clues" open>
           <summary>Your clues ({clues.length})</summary>
@@ -115,6 +117,20 @@ export function Notebook({ suspects, labels, storageKey, clues }: Props) {
         </details>
       )}
 
+      <div className="cf-seg cf-nb__tabs" role="group" aria-label="Notebook columns">
+        {groups.map((g) => (
+          <button
+            key={g.name}
+            type="button"
+            className="cf-seg__btn"
+            aria-pressed={active === g.name}
+            onClick={() => setActive(g.name as typeof active)}
+          >
+            {g.name}
+          </button>
+        ))}
+      </div>
+
       <div className="cf-nb__scroll">
         <table onMouseLeave={() => setCross(null)}>
           <thead>
@@ -123,7 +139,7 @@ export function Notebook({ suspects, labels, storageKey, clues }: Props) {
                 <span className="cf-sr">Suspect</span>
               </th>
               {groups.map((g) => (
-                <th key={g.name} colSpan={g.values.length} scope="colgroup">
+                <th key={g.name} colSpan={g.values.length} scope="colgroup" data-g={g.name}>
                   {g.name}
                 </th>
               ))}
@@ -131,7 +147,7 @@ export function Notebook({ suspects, labels, storageKey, clues }: Props) {
             <tr className="cf-nb__col">
               {groups.map((g) =>
                 g.values.map((v) => (
-                  <th key={g.name + v} scope="col" className={clsx(cross?.col === v && "is-cross")}>
+                  <th key={g.name + v} scope="col" data-g={g.name} className={clsx(cross?.col === v && "is-cross")}>
                     <span>{v}</span>
                   </th>
                 )),
@@ -155,6 +171,7 @@ export function Notebook({ suspects, labels, storageKey, clues }: Props) {
                       return (
                         <td
                           key={key}
+                          data-g={g.name}
                           className={clsx(
                             "cf-nb__cell",
                             i === 0 && "cf-nb__first",

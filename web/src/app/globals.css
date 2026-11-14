@@ -403,3 +403,66 @@ a.cf-btn:focus-visible {
     padding-right: 0;
   }
 }
+
+/* Landing: the jury's path. Dashed like DemoBar: it is about the demo, not the case. */
+.cf-judges {
+  display: grid;
+  gap: var(--space-2);
+  background: var(--card);
+  border: 2px dashed var(--ink);
+  border-radius: var(--radius-paper);
+  padding: var(--space-4);
+}
+.cf-judges__list {
+  margin: 0;
+  padding-left: var(--space-6);
+  display: grid;
+  gap: var(--space-2);
+}
+
+/* Paywall: the Stripe test card next to the pay button. */
+.cf-testcard {
+  display: grid;
+  gap: var(--space-1);
+  background: var(--folder-deep);
+  border: 2px dashed var(--ink);
+  border-radius: var(--radius-paper);
+  padding: var(--space-3) var(--space-4);
+}
+.cf-testcard__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.cf-testcard__num {
+  font-family: var(--font-type);
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 1px;
+}
+
+/* Notebook on narrow screens: one group (Room, Time or Item) at a time, picked with tabs,
+   so five suspects x five boxes fit without sideways scrolling. Wide notebooks show all. */
+.cf-notebook {
+  container-type: inline-size;
+}
+.cf-nb__tabs {
+  padding: var(--space-3) var(--space-3) 0;
+}
+@container (max-width: 759px) {
+  .cf-notebook .cf-nb__name {
+    min-width: 76px; /* fits 360px phones: 76 + 5 x 44 */
+  }
+  .cf-notebook[data-active="Room"] [data-g]:not([data-g="Room"]),
+  .cf-notebook[data-active="Time"] [data-g]:not([data-g="Time"]),
+  .cf-notebook[data-active="Item"] [data-g]:not([data-g="Item"]) {
+    display: none;
+  }
+}
+@container (min-width: 760px) {
+  .cf-nb__tabs {
+    display: none;
+  }
+}

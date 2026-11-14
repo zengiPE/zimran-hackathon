@@ -25,19 +25,29 @@ npm run build --prefix web
 
 | Route | What it does | API |
 | --- | --- | --- |
-| `/` | Landing, "Try a demo case", Create case form | `GET /api/themes`, `POST /api/cases` |
+| `/` | Landing, jury path, "Try a demo case", Create case form | `GET /api/themes`, `POST /api/cases` |
 | `/host/[id]?token=…` | Host screen for a projector: QR invites, who joined, Hint, Next day (demo), the reveal | `GET …/host` every 5 s, `POST …/advance`, `POST …/hint` |
 | `/play/[id]?token=…` | Player screen: clues, notebook, board; the vote; the reveal | `GET …/me` every 5 s, `POST …/board`, `POST …/vote`, `GET …/reveal` |
-| `/paywall?case_id=…` | Plans and Stripe Checkout, the Paid state after the redirect | `GET /api/plans`, `POST /api/checkout`, `GET /api/checkout/{id}` |
+| `/paywall?case_id=…` | Plans, Stripe Checkout with the test card on screen, Paid opens the next case | `GET /api/plans`, `POST /api/checkout`, `GET /api/checkout/{id}` |
 | `/dev/kit` | Every component in every state on real demo data (visual test) | none |
 
 What a game screen shows depends only on `phase` from the API: `play`, `vote` or `reveal`.
 
 ## Demo in one minute
 
-1. Open `/` on a phone and press **Try a demo case**. It creates the tested case (seed 7) for Alex, Blake, Casey and Drew.
-2. DemoBar at the top: **View as** switches players, **Next day** moves the days, **Hint** opens a key clue for everyone.
-3. After day 3 press **Open voting**, vote as two or three players, and the animated reveal starts on its own (**Replay** runs it again).
+1. Open `/` and press **Try a demo case**, type your name, press **Start the demo**. It creates the
+   tested case (seed 7) for you plus three AI teammates: Nora, Felix and Kai.
+2. The AI teammates post their clue of the day on the board. Press **Share this clue** under yours
+   or write a theory: one or two of them reply within a few seconds ("Nora is typing…").
+3. The dashed **demo bar** at the top: **Next day** twice, then **Open voting**. **View as** shows any
+   seat's screen (an AI seat is read only). **Hint** opens a key clue for everyone.
+4. Pick a suspect and press **Cast your vote**: the AI teammates have already voted, so the animated
+   reveal starts (**Replay** runs it again). Under the votes: your crew's record.
+5. **Open the next case**: case #2 with the same crew, or the paywall first when Stripe is on
+   (test card `4242 4242 4242 4242`, any future date, any CVC, any ZIP).
+
+If the API has AI teammates turned off (409) or is older (422 on `solo`), the button falls back to
+the classic demo: one person plays all four seats (you, Blake, Casey, Drew) via **View as**.
 
 ## Code map
 

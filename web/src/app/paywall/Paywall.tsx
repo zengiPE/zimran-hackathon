@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 import useSWR from "swr";
 import { Button, ButtonLink } from "@/components/cf/Button";
 import { NextCase } from "@/components/cf/NextCase";
+import { TestCard } from "@/components/cf/TestCard";
 import { Stamp } from "@/components/cf/Stamp";
 import { ErrorNote, PaperLoader, PaperSkeleton, Screen } from "@/components/cf/States";
 import { errorText, getCheckout, getPayment, getPlans, isStatus, startCheckout } from "@/lib/api";
@@ -173,7 +174,7 @@ export function Paywall() {
             <Button variant="primary" block type="submit" disabled={busy || !plans.data}>
               {busy ? "Opening checkout…" : "Open the next case"}
             </Button>
-            <p className="cf-caption">Secure checkout by Stripe. Test mode: no real card is charged.</p>
+            <TestCard />
           </>
         )}
       </form>
