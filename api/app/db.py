@@ -13,7 +13,7 @@ from functools import lru_cache
 from typing import Annotated
 
 from fastapi import Depends
-from sqlalchemy import Engine
+from sqlalchemy import Engine, inspect, text
 from sqlmodel import Session, SQLModel, create_engine
 
 from app.config import get_settings
@@ -53,7 +53,32 @@ def get_engine() -> Engine:
     import app.models  # noqa: F401  (registers every table before create_all)
 
     SQLModel.metadata.create_all(engine)
+    add_missing_columns(engine)
     return engine
+
+
+def add_missing_columns(engine: Engine) -> list[str]:
+    """create_all never alters existing tables. Add new nullable columns to tables that
+    already exist (enough for a hackathon; no Alembic). Returns the columns it added."""
+    insp = inspect(engine)
+    added = []
+    with engine.begin() as conn:
+        for table in SQLModel.metadata.sorted_tables:
+            if not insp.has_table(table.name):
+                continue
+            have = {c["name"] for c in insp.get_columns(table.name)}
+            for col in table.columns:
+                if col.name in have:
+                    continue
+                if col.primary_key or not col.nullable:
+                    log.warning("cannot auto-add non-nullable column %s.%s", table.name, col.name)
+                    continue
+                ddl = col.type.compile(dialect=engine.dialect)
+                conn.execute(text(f'ALTER TABLE "{table.name}" ADD COLUMN "{col.name}" {ddl}'))
+                added.append(f"{table.name}.{col.name}")
+    if added:
+        log.info("added columns: %s", ", ".join(added))
+    return added
 
 
 def get_session() -> Iterator[Session]:

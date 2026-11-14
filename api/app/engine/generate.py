@@ -253,6 +253,15 @@ def public_facts(case: dict) -> list[Fact]:
     return [Fact.from_dict(f) for f in case["public"]]
 
 
+def candidates(case: dict, facts: list[Fact]) -> list[int]:
+    """Suspect ids that can still be the culprit given the public incident plus these facts.
+
+    This is what an AI teammate "believes": exhaustive over every world, never a guess.
+    """
+    w = world_space(len(case["suspects"]))
+    return w.culprits(_Masks(w, public_facts(case)).all_of(facts), case["crime_room"])
+
+
 def explain(case: dict) -> list[dict]:
     """Reveal chain: in unlock order, which suspects each clue ruled out."""
     w = world_space(len(case["suspects"]))

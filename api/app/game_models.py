@@ -23,6 +23,10 @@ class Case(SQLModel, table=True):
     day_offset: int = 0  # days skipped by the host in demo mode
     shared: list = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
     started_at: datetime = Field(default_factory=utcnow)
+    # A crew = the same group of friends playing case after case (the retention loop).
+    group_id: str | None = Field(default=None, index=True)  # id of the crew's first case
+    prev_case_id: str | None = None
+    next_case_id: str | None = None
 
 
 class Player(SQLModel, table=True):
@@ -33,6 +37,9 @@ class Player(SQLModel, table=True):
     idx: int
     name: str
     joined_at: datetime | None = None
+    # AI teammate seat (new columns are nullable so existing databases can be migrated)
+    is_ai: bool | None = None
+    persona: str | None = None
 
 
 class ClueOpen(SQLModel, table=True):
@@ -50,6 +57,20 @@ class BoardPost(SQLModel, table=True):
     case_id: str = Field(index=True)
     player_idx: int
     text: str
+    created_at: datetime = Field(default_factory=utcnow)
+    fact_clue_id: str | None = None  # a clue the author attached ("Share this clue")
+    is_ai: bool | None = None
+    visible_at: datetime | None = None  # AI posts appear after a short "typing" delay
+
+
+class AiAction(SQLModel, table=True):
+    """Idempotency key for AI moves (one share per clue, one vote per seat), so
+    concurrent polls never duplicate a post."""
+
+    __tablename__ = "ai_actions"  # type: ignore[assignment]
+
+    case_id: str = Field(primary_key=True)
+    key: str = Field(primary_key=True)
     created_at: datetime = Field(default_factory=utcnow)
 
 
