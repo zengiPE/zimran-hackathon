@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { BookOpen, Camera, Ear, FileText, MessageSquare, Receipt } from "lucide-react";
 import type { Clue } from "@/lib/types";
 import { Button } from "./Button";
 import { Stamp } from "./Stamp";
@@ -24,6 +25,18 @@ function kindOf(format: string | null): Kind {
   return "card";
 }
 
+/** A small picture of the document type, next to its name ("Photo caption", "Receipt note"…). */
+function KindIcon({ format }: { format: string | null }) {
+  const f = (format ?? "").toLowerCase();
+  const props = { size: 20, strokeWidth: 1.75, "aria-hidden": true } as const;
+  if (f.includes("message") || f.includes("text")) return <MessageSquare {...props} />;
+  if (f.includes("receipt")) return <Receipt {...props} />;
+  if (f.includes("photo")) return <Camera {...props} />;
+  if (f.includes("guestbook") || f.includes("note") || f.includes("diary")) return <BookOpen {...props} />;
+  if (f.includes("overheard") || f.includes("heard")) return <Ear {...props} />;
+  return <FileText {...props} />;
+}
+
 /** A clue as a paper document, with its exact fact printed underneath. */
 export function ClueCard({ clue, exhibit, isNew, shared, suspectNames, used, onToggleUsed }: Props) {
   const story = clue.story ?? clue.text;
@@ -42,7 +55,10 @@ export function ClueCard({ clue, exhibit, isNew, shared, suspectNames, used, onT
     >
       {isNew && kind !== "receipt" && <Stamp className="cf-clue__flag">New today</Stamp>}
       <div className="cf-clue__meta">
-        <span className="cf-label">{label}</span>
+        <span className="cf-label cf-clue__kind">
+          <KindIcon format={clue.format} />
+          {label}
+        </span>
         {!shared && <span className="cf-label">Day {clue.day}</span>}
         {shared && used && <span className="cf-label">Used</span>}
       </div>

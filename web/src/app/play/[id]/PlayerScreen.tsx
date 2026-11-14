@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Board } from "@/components/cf/BoardPost";
 import { CaseHeader } from "@/components/cf/CaseHeader";
 import { ClueCard } from "@/components/cf/ClueCard";
+import { CoachMark } from "@/components/cf/CoachMark";
 import { CrewRecord } from "@/components/cf/CrewRecord";
 import { DemoBar } from "@/components/cf/DemoBar";
 import { Composer } from "@/components/cf/Composer";
@@ -132,6 +133,14 @@ export function PlayerScreen() {
   const opened = me.players.filter((p) => p.opened_today).length;
   const voted = me.players.filter((p) => p.voted).length;
   const suspectNames = me.suspects.map((s) => s.name);
+  // AI teammates read only clues attached with "Share this clue", never clues typed in a post.
+  const hasAi = me.players.some((p) => p.is_ai);
+  // The incident from the case brief: "Whoever was in the Sunroom at 7:00 PM broke it."
+  const goalMatch = /in the ([A-Z][\w ]*?) at (\d{1,2}:\d{2} [AP]M)/.exec(me.intro);
+  const goal =
+    goalMatch && me.labels.room.includes(goalMatch[1]) && me.labels.time.includes(goalMatch[2])
+      ? { room: goalMatch[1], time: goalMatch[2] }
+      : null;
   // Facts for the notebook strip: your own clues only, newest first.
   const notebookClues = [...clues]
     .reverse()
@@ -212,6 +221,11 @@ export function PlayerScreen() {
             onHint={demoHint}
           />
         )}
+        {demo && !viewingAi && (
+          <CoachMark id="demo-bar">
+            This bar is only in the demo. Next day moves time forward, View as shows any player&apos;s screen.
+          </CoachMark>
+        )}
 
         {viewingAi && (
           <p className="cf-error" role="status">
@@ -270,6 +284,11 @@ export function PlayerScreen() {
               <div key={today.id} className="cf-fade cf-stack">
                 <ClueCard clue={today} exhibit={exhibit(today.id)} isNew suspectNames={suspectNames} />
                 {canShare && <ShareClue shared={sharedIds.has(today.id)} onShare={() => post("", today.id)} />}
+                {!viewingAi && (
+                  <CoachMark id="your-clue">
+                    This clue is yours: nobody else has it. Share it, or the group can&apos;t solve the case.
+                  </CoachMark>
+                )}
               </div>
             ) : (
               <p className="cf-caption">No clue for you today. Check the board.</p>
@@ -288,6 +307,12 @@ export function PlayerScreen() {
           </Drawer>
         )}
 
+        {!viewingAi && (
+          <CoachMark id="notebook">
+            Your notebook is a logic grid: rule suspects out as clues come in. Tap a name in a clue to jump to its
+            row. Only you see it.
+          </CoachMark>
+        )}
         <Drawer title="Your notebook">
           <Notebook
             key={myToken}
@@ -295,6 +320,7 @@ export function PlayerScreen() {
             labels={me.labels}
             storageKey={`notebook:${id}:${myToken}`}
             clues={notebookClues}
+            goal={goal}
           />
         </Drawer>
 
@@ -305,13 +331,13 @@ export function PlayerScreen() {
             </h2>
             {me.shared_clues.map((c) => (
               <ClueCard
-              key={c.id}
-              clue={c}
-              shared
-              suspectNames={suspectNames}
-              used={used.includes(c.id)}
-              onToggleUsed={() => toggleUsed(c.id)}
-            />
+                key={c.id}
+                clue={c}
+                shared
+                suspectNames={suspectNames}
+                used={used.includes(c.id)}
+                onToggleUsed={() => toggleUsed(c.id)}
+              />
             ))}
           </section>
         )}
@@ -319,12 +345,22 @@ export function PlayerScreen() {
         <Drawer title={`Players (${me.players.length})`}>
           <Roster players={me.players} phase={me.phase} myIdx={me.me.idx} />
         </Drawer>
-
       </div>
 
       <div className="cf-play__col cf-play__side">
+        {!viewingAi && (
+          <CoachMark id="board">
+            The board is where the group argues it out. Post a theory and your teammates reply.
+          </CoachMark>
+        )}
         <Board posts={me.board} myName={me.me.name} typing={me.typing} />
-        {!viewingAi && <Composer pinned onPost={(text) => post(text)} />}
+        {!viewingAi && (
+          <Composer
+            pinned
+            onPost={(text) => post(text)}
+            hint={hasAi ? "AI teammates only count clues sent with Share this clue." : undefined}
+          />
+        )}
       </div>
     </Screen>
   );

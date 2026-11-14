@@ -1,6 +1,7 @@
 "use client";
 
 import clsx from "clsx";
+import { Clock, DoorOpen, Package, type LucideIcon } from "lucide-react";
 import { Fragment, useCallback, useEffect, useId, useRef, useState } from "react";
 import { dropArticle } from "@/lib/format";
 import { cellKey, deriveAutoMarks, type Group, type Mark, type Marks } from "@/lib/notebook";
@@ -13,6 +14,7 @@ const HIGHLIGHT_MS = 1500;
 const GLYPH: Record<Mark, string> = { "": "", no: "✗", yes: "✓" };
 const WORD: Record<Mark, string> = { "": "blank", no: "ruled out", yes: "confirmed" };
 const NEXT: Record<Mark, Mark> = { "": "no", no: "yes", yes: "" };
+const GROUP_ICON: Record<string, LucideIcon> = { Room: DoorOpen, Time: Clock, Item: Package };
 
 /** One row of the "Your clues" strip: the exact fact of one of your clues. */
 export interface NotebookClue {
@@ -28,6 +30,7 @@ interface Props {
   labels: Labels;
   storageKey: string; // "notebook:{case_id}:{token}" — holds the manual marks only
   clues?: NotebookClue[]; // from my_clues, newest first
+  goal?: { room: string; time: string } | null; // the incident: who was in this room at this time
 }
 
 type GroupName = "Room" | "Time" | "Item";
@@ -58,12 +61,12 @@ function save(key: string, marks: Marks) {
  * The player's private logic grid. Only manual marks are saved; automatic ✗ marks
  * are derived on every render. Render it inside <BrowserOnly> (reads localStorage).
  */
-export function Notebook({ suspects, labels, storageKey, clues }: Props) {
+export function Notebook({ suspects, labels, storageKey, clues, goal }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const cluesId = useId();
   const [marks, setMarks] = useState<Marks>(() => load(storageKey));
-  const [undo, setUndo] = useState<{ key: string; prev: Mark }[]>([]); // memory only
+  const [undo, setUndo] = useState<Marks[]>([]); // earlier states, memory only (last 20)
   const [status, setStatus] = useState("");
   const [highlight, setHighlight] = useState<Highlight>(null);
   const timer = useRef<number | undefined>(undefined);
@@ -97,22 +100,31 @@ export function Notebook({ suspects, labels, storageKey, clues }: Props) {
     const manual = marks[key] ?? "";
     // Tapping an automatic ✗ writes a manual ✗; after that the usual cycle.
     const next: Mark = !manual && auto.has(key) ? "no" : NEXT[manual];
-    const updated = { ...marks, [key]: next };
+    change({ ...marks, [key]: next }, "");
+    flash({ row, col }, el.matches(":focus-visible"));
+  }
+
+  /** Apply new marks, keep the old ones for Undo, save. */
+  function change(updated: Marks, message: string) {
+    setUndo((u) => [...u, marks].slice(-UNDO_LIMIT));
     setMarks(updated);
     save(storageKey, updated);
-    setUndo((u) => [...u, { key, prev: manual }].slice(-UNDO_LIMIT));
-    setStatus("");
-    flash({ row, col }, el.matches(":focus-visible"));
+    setStatus(message);
   }
 
   function undoLast() {
     const last = undo[undo.length - 1];
     if (!last) return;
-    const updated = { ...marks, [last.key]: last.prev };
-    setMarks(updated);
-    save(storageKey, updated);
+    setMarks(last);
+    save(storageKey, last);
     setUndo((u) => u.slice(0, -1));
     setStatus("Undid the last mark.");
+  }
+
+  // Clear all can be undone too, so it needs no confirmation dialog.
+  const hasMarks = Object.values(marks).some(Boolean);
+  function clearAll() {
+    if (hasMarks) change({}, "Cleared the notebook. Undo brings it back.");
   }
 
   // A suspect name tapped in a clue: open this notebook and show that suspect's row.
@@ -176,6 +188,18 @@ export function Notebook({ suspects, labels, storageKey, clues }: Props) {
         </section>
       )}
 
+      <p className="cf-nb__goal">
+        {goal ? (
+          <>
+            Goal: find who was in the <b>{goal.room}</b> at <b>{goal.time}</b>.{" "}
+          </>
+        ) : (
+          "Goal: find the one suspect the clues leave. "
+        )}
+        Each suspect was in one room, at one time, with one item, and nobody shared any. Items matter because
+        clues tie them to people, rooms and times.
+      </p>
+
       <div className="cf-seg cf-nb__tabs" role="group" aria-label="Notebook columns">
         {groups.map((g) => (
           <button
@@ -185,6 +209,7 @@ export function Notebook({ suspects, labels, storageKey, clues }: Props) {
             aria-pressed={active === g.name}
             onClick={() => setActive(g.name as GroupName)}
           >
+            <GroupIcon name={g.name} />
             {g.name}
           </button>
         ))}
@@ -199,14 +224,22 @@ export function Notebook({ suspects, labels, storageKey, clues }: Props) {
               </th>
               {groups.map((g) => (
                 <th key={g.name} colSpan={g.values.length} scope="colgroup" data-g={g.name}>
-                  {g.name}
+                  <span className="cf-nb__groupname">
+                    <GroupIcon name={g.name} />
+                    {g.name}
+                  </span>
                 </th>
               ))}
             </tr>
             <tr className="cf-nb__col">
               {groups.map((g) =>
                 g.values.map((v) => (
-                  <th key={g.name + v} scope="col" data-g={g.name} className={clsx(colLit(v) && "is-cross")}>
+                  <th
+                    key={g.name + v}
+                    scope="col"
+                    data-g={g.name}
+                    className={clsx(colLit(v) && "is-cross", (v === goal?.room || v === goal?.time) && "is-key")}
+                  >
                     <span>{v}</span>
                   </th>
                 )),
@@ -271,13 +304,24 @@ export function Notebook({ suspects, labels, storageKey, clues }: Props) {
         <p className="cf-nb__legend">
           Tap a box: ✗ ruled out, ✓ confirmed. Small ✗ marks are filled in for you. Only you can see your notebook.
         </p>
-        <Button onClick={undoLast} disabled={undo.length === 0}>
-          Undo
-        </Button>
+        <div className="cf-nb__actions">
+          <Button onClick={undoLast} disabled={undo.length === 0}>
+            Undo
+          </Button>
+          <Button variant="quiet" onClick={clearAll} disabled={!hasMarks}>
+            Clear all
+          </Button>
+        </div>
         <p className="cf-sr" role="status" aria-live="polite">
           {status}
         </p>
       </div>
     </div>
   );
+}
+
+/** Room, Time or Item picture next to the group's name. */
+function GroupIcon({ name }: { name: string }) {
+  const Icon = GROUP_ICON[name];
+  return Icon ? <Icon size={16} strokeWidth={1.75} aria-hidden="true" /> : null;
 }

@@ -25,7 +25,7 @@ npm run build --prefix web
 
 | Route | What it does | API |
 | --- | --- | --- |
-| `/` | Landing, jury path, "Try a demo case", Create case form | `GET /api/themes`, `POST /api/cases` |
+| `/` | Landing that opens on the demo case, first-case steps, "Take the case", Create case form | `GET /api/themes`, `POST /api/cases` |
 | `/host/[id]?token=…` | Host screen for a projector: QR invites, who joined, Hint, Next day (demo), the reveal | `GET …/host` every 5 s, `POST …/advance`, `POST …/hint` |
 | `/play/[id]?token=…` | Player screen: clues, notebook, board; the vote; the reveal | `GET …/me` every 5 s, `POST …/board`, `POST …/vote`, `GET …/reveal` |
 | `/paywall?case_id=…` | Plans, Stripe Checkout with the test card on screen, Paid opens the next case | `GET /api/plans`, `POST /api/checkout`, `GET /api/checkout/{id}` |
@@ -35,7 +35,7 @@ What a game screen shows depends only on `phase` from the API: `play`, `vote` or
 
 ## Demo in one minute
 
-1. Open `/` and press **Try a demo case**, type your name, press **Start the demo**. It creates the
+1. Open `/` and press **Take the case**, type your name, press **Start the demo**. It creates the
    tested case (seed 7) for you plus three AI teammates: Nora, Felix and Kai.
 2. The AI teammates post their clue of the day on the board. Press **Share this clue** under yours
    or write a theory: one or two of them reply within a few seconds ("Nora is typing…").
