@@ -234,3 +234,10 @@ a.cf-btn:focus-visible {
 .cf-suspect {
   align-content: start;
 }
+
+/* Reveal: keep the counter in view while the strings draw (the board is taller than a phone). */
+.cf-reveal__head {
+  position: sticky;
+  top: var(--space-2);
+  z-index: 2;
+}

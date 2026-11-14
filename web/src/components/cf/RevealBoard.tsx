@@ -1,10 +1,19 @@
 "use client";
 
+import clsx from "clsx";
+import {
+  animate,
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useTransform,
+  type AnimationPlaybackControls,
+} from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { caseCopy } from "@/lib/caseCopy";
 import { formatNumber } from "@/lib/format";
 import type { RevealOut, Suspect } from "@/lib/types";
-import { ButtonLink } from "./Button";
+import { Button, ButtonLink } from "./Button";
 import { Stamp } from "./Stamp";
 import { SuspectCard } from "./SuspectCard";
 
@@ -19,27 +28,51 @@ interface StringPath {
   y: number;
 }
 
+// Timings from design/components/RevealBoard/README.md.
+const PUBLIC_MS = 500; // counter: total → public worlds
+const START_MS = 600; // first string starts
+const GUILTY_PAUSE_MS = 400; // after the last string lands
+const easeOutCubic = [0.33, 1, 0.68, 1] as const;
+
 /**
- * The final reveal on cork: counter of possible worlds, one note per clue,
- * the five suspects, a red string from every clue to the culprit, the verdict.
- * For now it shows the final state; the animation comes in phase 3.
+ * The final reveal on cork: the counter of possible worlds melts down while a
+ * red string runs from each clue to the culprit; "Cleared" lands on suspects
+ * as their string finishes; then "Guilty" and the verdict.
+ * Under prefers-reduced-motion everything shows in its final state at once.
  */
 export function RevealBoard({ reveal, suspects }: Props) {
   const { culprit, chain, stats, votes, truth } = reveal;
+  const reduce = useReducedMotion() ?? false;
+
   const boardRef = useRef<HTMLDivElement>(null);
   const noteRefs = useRef<(HTMLDivElement | null)[]>([]);
   const pinRef = useRef<HTMLSpanElement>(null);
   const [paths, setPaths] = useState<StringPath[]>([]);
 
-  // Everyone some clue cleared gets "Cleared"; the culprit gets "Guilty".
-  const cleared = new Set(chain.flatMap((c) => c.eliminated));
+  // Animation progress. `run` bumps on Replay to restart the sequence.
+  const [run, setRun] = useState(0);
+  const [drawn, setDrawn] = useState(0); // strings started
+  const [clearedSteps, setClearedSteps] = useState(0); // steps whose "Cleared" stamps landed
+  const [done, setDone] = useState(false); // "Guilty" + verdict
+
+  const lastWorlds = chain.at(-1)?.worlds_left ?? stats.worlds_left;
+  const count = useMotionValue(reduce ? lastWorlds : stats.worlds_total);
+  const countText = useTransform(count, (v) => formatNumber(Math.round(v)));
+
+  const step = Math.min(850, 8000 / Math.max(1, chain.length));
+  const draw = Math.round(step * 0.7);
+
+  // Under reduced motion, show the end state no matter what.
+  const shownDrawn = reduce ? chain.length : drawn;
+  const shownCleared = reduce ? chain.length : clearedSteps;
+  const shownDone = reduce || done;
+
+  const cleared = new Set(chain.slice(0, shownCleared).flatMap((c) => c.eliminated));
   const verdictOf = (s: Suspect) =>
-    s.id === culprit.id ? "guilty" : cleared.has(s.name) ? "cleared" : "none";
-
+    s.id === culprit.id && shownDone ? "guilty" : cleared.has(s.name) ? "cleared" : "none";
   const fact = truth.find((t) => t.suspect === culprit.name);
-  const worldsLeft = chain.at(-1)?.worlds_left ?? stats.worlds_left;
 
-  // Measure where the notes and the culprit's pin are, then draw strings.
+  // 1. Measure where the notes and the culprit's pin are, to draw the strings.
   useEffect(() => {
     const board = boardRef.current;
     if (!board) return;
@@ -70,13 +103,64 @@ export function RevealBoard({ reveal, suspects }: Props) {
     return () => observer.disconnect();
   }, [chain.length]);
 
+  // 2. Play the sequence with timers (restarts when `run` changes).
+  useEffect(() => {
+    if (reduce) {
+      count.set(lastWorlds);
+      return;
+    }
+    const timers: number[] = [];
+    let tween: AnimationPlaybackControls | null = null;
+    const at = (ms: number, fn: () => void) => timers.push(window.setTimeout(fn, ms));
+    const tweenTo = (to: number, ms: number) => {
+      tween?.stop();
+      tween = animate(count, to, { duration: ms / 1000, ease: easeOutCubic });
+    };
+
+    count.set(stats.worlds_total);
+    tweenTo(stats.worlds_public, PUBLIC_MS);
+
+    let t = START_MS;
+    chain.forEach((c, i) => {
+      at(t, () => {
+        setDrawn(i + 1);
+        tweenTo(c.worlds_left, draw);
+      });
+      at(t + draw, () => setClearedSteps(i + 1));
+      t += step;
+    });
+    at(t - (step - draw) + GUILTY_PAUSE_MS, () => {
+      // Land on the exact final number even if frames were skipped (hidden tab).
+      tween?.stop();
+      count.set(lastWorlds);
+      setDone(true);
+    });
+
+    return () => {
+      timers.forEach(clearTimeout);
+      tween?.stop();
+    };
+  }, [run, reduce, chain, count, draw, step, lastWorlds, stats.worlds_total, stats.worlds_public]);
+
+  function replay() {
+    setDrawn(0);
+    setClearedSteps(0);
+    setDone(false);
+    setRun((r) => r + 1);
+  }
+
   return (
     <div className="cf-reveal" ref={boardRef}>
       <div className="cf-reveal__head">
         <div className="cf-worlds" aria-live="polite">
           <span className="cf-label">Possible worlds left</span>
-          <p className="cf-worlds__num">{formatNumber(worldsLeft)}</p>
+          <motion.p className="cf-worlds__num">{countText}</motion.p>
         </div>
+        {!reduce && (
+          <Button small onClick={replay}>
+            Replay
+          </Button>
+        )}
       </div>
 
       <div className="cf-reveal__clues">
@@ -102,19 +186,22 @@ export function RevealBoard({ reveal, suspects }: Props) {
             key={s.id}
             suspect={s}
             verdict={verdictOf(s)}
+            thunk={!reduce}
             pinRef={s.id === culprit.id ? pinRef : undefined}
           />
         ))}
       </div>
 
-      <div className="cf-verdict">
-        <Stamp big>Solved</Stamp>
+      <div className={clsx("cf-verdict", !reduce && "cf-fade")} hidden={!shownDone}>
+        <Stamp big thunk={!reduce}>
+          Solved
+        </Stamp>
         <p className="cf-verdict__line">
           {culprit.name} {caseCopy(reveal.title).deed}.
         </p>
         <p className="cf-caption">
           {fact && `${fact.room} · ${fact.time} · ${fact.item}. `}
-          {formatNumber(worldsLeft)} possible worlds are left, and in every one of them it&apos;s {culprit.name}.
+          {formatNumber(lastWorlds)} possible worlds are left, and in every one of them it&apos;s {culprit.name}.
         </p>
         {votes.length > 0 && (
           <ul className="cf-votes" aria-label="Votes">
@@ -136,10 +223,22 @@ export function RevealBoard({ reveal, suspects }: Props) {
       </div>
 
       <svg className="cf-reveal__strings" aria-hidden="true">
-        {paths.map((p, i) => (
-          <g key={i}>
-            <path className="cf-string-under" d={p.d} />
-            <path className="cf-string" d={p.d} />
+        {paths.slice(0, shownDrawn).map((p, i) => (
+          <g key={`${run}-${i}`}>
+            <motion.path
+              className="cf-string-under"
+              d={p.d}
+              initial={reduce ? false : { pathLength: 0 }}
+              animate={{ pathLength: 1 }}
+              transition={{ duration: draw / 1000, ease: "easeInOut" }}
+            />
+            <motion.path
+              className="cf-string"
+              d={p.d}
+              initial={reduce ? false : { pathLength: 0 }}
+              animate={{ pathLength: 1 }}
+              transition={{ duration: draw / 1000, ease: "easeInOut" }}
+            />
             <circle className="cf-knot" cx={p.x} cy={p.y} r={4} />
           </g>
         ))}

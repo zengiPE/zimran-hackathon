@@ -1,6 +1,7 @@
 import { FileSearch, FolderPlus, Vote } from "lucide-react";
 import { ButtonLink } from "@/components/cf/Button";
 import { CreateCase } from "./CreateCase";
+import { TryDemo } from "./TryDemo";
 
 const STEPS = [
   {
@@ -31,6 +32,8 @@ export default function Home() {
         <ButtonLink variant="primary" block href="#create">
           Start a case
         </ButtonLink>
+        <TryDemo />
+        <p className="cf-caption">The demo is a ready case for four. You play every seat and move the days yourself.</p>
       </header>
 
       <section className="cf-stack" aria-labelledby="how">

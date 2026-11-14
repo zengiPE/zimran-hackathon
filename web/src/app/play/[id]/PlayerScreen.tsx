@@ -1,10 +1,11 @@
 "use client";
 
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Board } from "@/components/cf/BoardPost";
 import { CaseHeader } from "@/components/cf/CaseHeader";
 import { ClueCard } from "@/components/cf/ClueCard";
+import { DemoBar } from "@/components/cf/DemoBar";
 import { Composer } from "@/components/cf/Composer";
 import { Drawer } from "@/components/cf/Drawer";
 import { Notebook } from "@/components/cf/Notebook";
@@ -12,10 +13,10 @@ import { RevealBoard } from "@/components/cf/RevealBoard";
 import { Roster } from "@/components/cf/RosterRow";
 import { ErrorNote, PaperLoader, PaperSkeleton, Screen } from "@/components/cf/States";
 import { VotePicker } from "@/components/cf/VotePicker";
-import { castVote, errorText, isStatus, postBoard } from "@/lib/api";
+import { advanceDay, askHint, castVote, errorText, isStatus, postBoard } from "@/lib/api";
 import { caseCopy } from "@/lib/caseCopy";
 import { paragraphs } from "@/lib/format";
-import { readJSON, writeJSON } from "@/lib/storage";
+import { loadCase, readJSON, writeJSON } from "@/lib/storage";
 import { useMe, useReveal } from "@/lib/useCase";
 
 export function PlayerScreen() {
@@ -23,6 +24,10 @@ export function PlayerScreen() {
   const token = useSearchParams().get("token");
   const { data: me, error, mutate } = useMe(id, token);
   const reveal = useReveal(id, me?.phase === "reveal");
+  const router = useRouter();
+
+  // A demo case created in this browser: we know every seat and the host token.
+  const [saved] = useState(() => loadCase(id));
 
   // "Case brief" is open on the first visit, collapsed after.
   const briefKey = `brief-seen:${id}:${token}`;
@@ -40,6 +45,12 @@ export function PlayerScreen() {
     }
     lastDay.current = day;
   }, [day]);
+
+  // The reveal starts at the top of the page, with the counter.
+  const phase = me?.phase;
+  useEffect(() => {
+    if (phase === "reveal") window.scrollTo({ top: 0 });
+  }, [phase]);
 
   // ---- Errors and loading ----
   if (!token) {
@@ -113,8 +124,43 @@ export function PlayerScreen() {
     }
   }
 
+  // ---- Demo controls (only for a demo case created in this browser) ----
+  const demo = me.demo && saved ? saved : null;
+
+  function viewAs(name: string) {
+    const seat = demo?.invites.find((i) => i.name === name);
+    if (!seat || seat.token === myToken) return;
+    window.scrollTo({ top: 0 });
+    router.replace(`/play/${id}?token=${encodeURIComponent(seat.token)}`, { scroll: false });
+  }
+
+  async function demoNextDay() {
+    if (!demo) return;
+    await advanceDay(id, demo.host_token);
+    await mutate();
+  }
+
+  async function demoHint() {
+    if (!demo) return;
+    await askHint(id, demo.host_token);
+    await mutate();
+  }
+
   return (
     <Screen>
+      {demo && (
+        <DemoBar
+          names={demo.invites.map((i) => i.name)}
+          current={me.me.name}
+          day={me.day}
+          daysTotal={me.days_total}
+          phase={me.phase}
+          onViewAs={viewAs}
+          onNextDay={demoNextDay}
+          onHint={demoHint}
+        />
+      )}
+
       <CaseHeader
         title={me.title}
         day={me.day}
@@ -170,7 +216,7 @@ export function PlayerScreen() {
       )}
 
       <Drawer title="Your notebook">
-        <Notebook suspects={me.suspects} labels={me.labels} storageKey={`notebook:${id}:${myToken}`} />
+        <Notebook key={myToken} suspects={me.suspects} labels={me.labels} storageKey={`notebook:${id}:${myToken}`} />
       </Drawer>
 
       {me.shared_clues.length > 0 && (
