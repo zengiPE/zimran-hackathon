@@ -31,7 +31,9 @@ npm run dev                       # web на :3000, api на :8000
 
 ## Деплой (Vercel)
 
-Два проекта в команде ZENGI, оба подключены к этому репо:
+- Production: фронт https://zimran-hackathon-web.vercel.app, API https://zimran-hackathon-api.vercel.app
+
+Два проекта в личном Vercel (Hobby). Деплоит GitHub Actions (`.github/workflows/deploy.yml`) токеном владельца из секрета `VERCEL_TOKEN`, поэтому пушить может любой участник. Собственный Git-автодеплой Vercel отключён (`git.deploymentEnabled: false` в `vercel.json`), потому что на Hobby он блокирует коммиты других участников.
 
 | Проект | Root | Что |
 |---|---|---|
@@ -39,7 +41,7 @@ npm run dev                       # web на :3000, api на :8000
 | `zimran-hackathon-api` | `api/` | FastAPI как Vercel Function (`app/main.py`, до 60 с на запрос) |
 
 - Push в `main` → production-деплой обоих проектов.
-- Pull request → preview-деплой (ссылка появится в PR). Preview фронта ходит в production API.
+- Push в любую другую ветку → preview-деплой; если по ветке открыт PR, ссылка придёт комментарием. Preview фронта ходит в production API.
 - Секреты (ключи LLM и т.п.) добавляются в Vercel → Project → Settings → Environment Variables, не в код.
 - Новые переменные `API_URL` применяются только после передеплоя (читаются при сборке).
 
