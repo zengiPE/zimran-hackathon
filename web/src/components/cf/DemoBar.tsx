@@ -6,7 +6,7 @@ import type { Phase } from "@/lib/types";
 import { Button } from "./Button";
 
 interface Props {
-  names: string[]; // every player of the demo case
+  seats: { name: string; ai?: boolean }[]; // every seat of the demo case
   current: string; // whose screen is shown
   day: number;
   daysTotal: number;
@@ -17,7 +17,7 @@ interface Props {
 }
 
 /** Demo controls: play every seat, move the day, ask for a hint. */
-export function DemoBar({ names, current, day, daysTotal, phase, onViewAs, onNextDay, onHint }: Props) {
+export function DemoBar({ seats, current, day, daysTotal, phase, onViewAs, onNextDay, onHint }: Props) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
 
@@ -44,15 +44,17 @@ export function DemoBar({ names, current, day, daysTotal, phase, onViewAs, onNex
         <span className="cf-caption">{where}</span>
       </div>
       <div className="cf-seg" role="group" aria-label="View as">
-        {names.map((n) => (
+        {seats.map((s) => (
           <button
-            key={n}
+            key={s.name}
             className="cf-seg__btn"
             type="button"
-            aria-pressed={n === current}
-            onClick={() => onViewAs(n)}
+            aria-pressed={s.name === current}
+            aria-label={s.ai ? `${s.name}, AI teammate` : s.name}
+            onClick={() => onViewAs(s.name)}
           >
-            {n}
+            {s.name}
+            {s.ai && " · AI"}
           </button>
         ))}
       </div>

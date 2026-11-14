@@ -26,7 +26,11 @@ export function useMe(id: string | null, token: string | null) {
   return useSWR<MeOut, Error>(
     id && token ? ["me", id, token] : null,
     ([, i, t]: [string, string, string]) => getMe(i, t),
-    polling,
+    {
+      ...polling,
+      // While AI teammates are typing, check back sooner so their replies land quickly.
+      refreshInterval: (data) => (data?.typing?.length ? 2000 : POLL_MS),
+    },
   );
 }
 

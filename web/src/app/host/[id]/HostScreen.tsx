@@ -136,6 +136,7 @@ export function HostScreen() {
                 name={p.name}
                 url={p.url ?? ""}
                 joined={p.joined}
+                ai={p.is_ai}
                 status={playerStatus(p, host.phase)}
               />
             ))}

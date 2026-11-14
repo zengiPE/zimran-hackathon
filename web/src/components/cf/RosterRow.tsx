@@ -16,12 +16,12 @@ export function RosterRow({ player, phase, isMe }: { player: PlayerRow; phase: P
   const s = status(player, phase);
   return (
     <li className="cf-roster__row">
-      <span className="cf-avatar" aria-hidden="true">
+      <span className={clsx("cf-avatar", player.is_ai && "cf-avatar--ai")} aria-hidden="true">
         {initial(player.name)}
       </span>
       <span className="cf-roster__name">
         {player.name}
-        {isMe && " (you)"}
+        {isMe && " (you)"} {player.is_ai && <span className="cf-tag">AI teammate</span>}
       </span>
       <span className={clsx("cf-roster__status", s.done && "cf-roster__status--done")}>{s.text}</span>
     </li>
