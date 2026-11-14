@@ -29,6 +29,20 @@ npm run dev                       # web на :3000, api на :8000
 | `npm run lint` | ESLint + ruff |
 | `npm run test` | pytest для api |
 
+## Деплой (Vercel)
+
+Два проекта в команде ZENGI, оба подключены к этому репо:
+
+| Проект | Root | Что |
+|---|---|---|
+| `zimran-hackathon-web` | `web/` | Next.js; проксирует `/api/*` на бэкенд по `API_URL` |
+| `zimran-hackathon-api` | `api/` | FastAPI как Vercel Function (`app/main.py`, до 60 с на запрос) |
+
+- Push в `main` → production-деплой обоих проектов.
+- Pull request → preview-деплой (ссылка появится в PR). Preview фронта ходит в production API.
+- Секреты (ключи LLM и т.п.) добавляются в Vercel → Project → Settings → Environment Variables, не в код.
+- Новые переменные `API_URL` применяются только после передеплоя (читаются при сборке).
+
 ## Структура
 
 ```

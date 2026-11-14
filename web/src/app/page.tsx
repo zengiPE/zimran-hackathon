@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from "react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
 type Health = { status: string; service: string };
 
 export default function Home() {
@@ -11,7 +9,8 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${API_URL}/api/health`)
+    // Same-origin: next.config.ts rewrites /api/* to the FastAPI backend
+    fetch("/api/health")
       .then((r) => r.json())
       .then(setHealth)
       .catch((e) => setError(String(e)));
