@@ -1,0 +1,27 @@
+<!-- @dsCard group="Screens" height=200 subtitle="Demo controls for one person playing every seat" -->
+<div class="cf-desk">
+  <div class="cf-demobar" role="region" aria-label="Demo controls">
+    <div class="cf-demobar__row">
+      <span class="cf-label">Demo case · View as</span>
+      <span class="cf-caption">Day 2 of 3</span>
+    </div>
+    <div class="cf-seg" role="group" aria-label="View as">
+      <button class="cf-seg__btn" type="button" aria-pressed="true">Alex</button>
+      <button class="cf-seg__btn" type="button" aria-pressed="false">Blake</button>
+      <button class="cf-seg__btn" type="button" aria-pressed="false">Casey</button>
+      <button class="cf-seg__btn" type="button" aria-pressed="false">Drew</button>
+    </div>
+    <div class="cf-demobar__row">
+      <button class="cf-btn cf-btn--secondary cf-btn--sm" type="button">Hint</button>
+      <button class="cf-btn cf-btn--primary cf-btn--sm" type="button">Next day</button>
+    </div>
+  </div>
+</div>
+<script>
+document.querySelectorAll('.cf-seg').forEach(function (g) {
+  g.addEventListener('click', function (e) {
+    var b = e.target.closest('.cf-seg__btn'); if (!b) return;
+    g.querySelectorAll('.cf-seg__btn').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+  });
+});
+</script>

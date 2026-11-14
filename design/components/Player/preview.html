@@ -1,0 +1,58 @@
+<!-- @dsCard group="People" height=720 subtitle="Host-screen invite cards with QR, and the in-game roster" -->
+<div>
+  <div class="cf-cork">
+    <div class="cf-invites">
+      <article class="cf-invite is-joined">
+        <h3 class="cf-invite__name">Alex</h3>
+        <div class="cf-invite__qr"><canvas class="cf-qr" width="150" height="150" data-seed="alex" role="img" aria-label="QR code for Alex's link"></canvas><span class="cf-stamp">Joined</span></div>
+        <p class="cf-invite__link">casefile.app/play/fAtg5pIP?token=xDC3O9HT</p>
+      </article>
+      <article class="cf-invite is-joined">
+        <h3 class="cf-invite__name">Blake</h3>
+        <div class="cf-invite__qr"><canvas class="cf-qr" width="150" height="150" data-seed="blake" role="img" aria-label="QR code for Blake's link"></canvas><span class="cf-stamp">Joined</span></div>
+        <p class="cf-invite__link">casefile.app/play/fAtg5pIP?token=Kq81sLmZ</p>
+      </article>
+      <article class="cf-invite">
+        <h3 class="cf-invite__name">Casey</h3>
+        <div class="cf-invite__qr"><canvas class="cf-qr" width="150" height="150" data-seed="casey" role="img" aria-label="QR code for Casey's link"></canvas></div>
+        <p class="cf-invite__link">casefile.app/play/fAtg5pIP?token=p0Wd7RtE</p>
+      </article>
+      <article class="cf-invite">
+        <h3 class="cf-invite__name">Drew</h3>
+        <div class="cf-invite__qr"><canvas class="cf-qr" width="150" height="150" data-seed="drew" role="img" aria-label="QR code for Drew's link"></canvas></div>
+        <p class="cf-invite__link">casefile.app/play/fAtg5pIP?token=Zy5bN2cV</p>
+      </article>
+    </div>
+  </div>
+  <div class="cf-desk">
+    <ul class="cf-roster" aria-label="Players">
+      <li class="cf-roster__row"><span class="cf-avatar" aria-hidden="true">A</span><span class="cf-roster__name">Alex (you)</span><span class="cf-roster__status cf-roster__status--done">Opened today's clue</span></li>
+      <li class="cf-roster__row"><span class="cf-avatar" aria-hidden="true">B</span><span class="cf-roster__name">Blake</span><span class="cf-roster__status cf-roster__status--done">Opened today's clue</span></li>
+      <li class="cf-roster__row"><span class="cf-avatar" aria-hidden="true">C</span><span class="cf-roster__name">Casey</span><span class="cf-roster__status">Hasn't opened today's clue</span></li>
+      <li class="cf-roster__row"><span class="cf-avatar" aria-hidden="true">D</span><span class="cf-roster__name">Drew</span><span class="cf-roster__status">Hasn't joined yet</span></li>
+    </ul>
+  </div>
+</div>
+<script>
+(function () {
+  var ink = getComputedStyle(document.documentElement).getPropertyValue('--ink').trim() || '#1d1b19';
+  document.querySelectorAll('canvas.cf-qr').forEach(function (c) {
+    var s = c.getAttribute('data-seed') || 'x', seed = 2166136261;
+    for (var i = 0; i < s.length; i++) { seed ^= s.charCodeAt(i); seed = Math.imul(seed, 16777619) >>> 0; }
+    function rnd() { seed ^= seed << 13; seed >>>= 0; seed ^= seed >>> 17; seed ^= seed << 5; seed >>>= 0; return seed / 4294967296; }
+    var n = 25, m = c.width / n, ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, c.width, c.height);
+    ctx.fillStyle = ink;
+    function inFinder(x, y) { return (x < 8 && y < 8) || (x > n - 9 && y < 8) || (x < 8 && y > n - 9); }
+    for (var y = 0; y < n; y++) for (var x = 0; x < n; x++) {
+      if (inFinder(x, y)) continue;
+      if (rnd() < 0.5) ctx.fillRect(x * m, y * m, m, m);
+    }
+    [[0, 0], [n - 7, 0], [0, n - 7]].forEach(function (p) {
+      ctx.fillRect(p[0] * m, p[1] * m, 7 * m, 7 * m);
+      ctx.clearRect((p[0] + 1) * m, (p[1] + 1) * m, 5 * m, 5 * m);
+      ctx.fillRect((p[0] + 2) * m, (p[1] + 2) * m, 3 * m, 3 * m);
+    });
+  });
+})();
+</script>

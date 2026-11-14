@@ -1,0 +1,99 @@
+<!-- @dsCard group="Screens" height=1700 width=400 subtitle="The player screen at phone width: demo case, day 2" -->
+<div class="cf-desk cf-screen">
+  <div class="cf-demobar" role="region" aria-label="Demo controls">
+    <div class="cf-demobar__row"><span class="cf-label">Demo case · View as</span><span class="cf-caption">Day 2 of 3</span></div>
+    <div class="cf-seg" role="group" aria-label="View as">
+      <button class="cf-seg__btn" type="button" aria-pressed="true">Alex</button>
+      <button class="cf-seg__btn" type="button" aria-pressed="false">Blake</button>
+      <button class="cf-seg__btn" type="button" aria-pressed="false">Casey</button>
+      <button class="cf-seg__btn" type="button" aria-pressed="false">Drew</button>
+    </div>
+    <div class="cf-demobar__row">
+      <button class="cf-btn cf-btn--secondary cf-btn--sm" type="button">Hint</button>
+      <button class="cf-btn cf-btn--primary cf-btn--sm" type="button">Next day</button>
+    </div>
+  </div>
+
+  <header class="cf-case">
+    <span class="cf-case__tab">Case file</span>
+    <div class="cf-case__body">
+      <p class="cf-case__theme">Day 2 of 3 · 4 players</p>
+      <h1 class="cf-case__title">The Lake House Weekend</h1>
+      <ol class="cf-days" style="--days:4" aria-label="Day 2 of 3">
+        <li class="cf-day cf-day--done">Day 1</li>
+        <li class="cf-day cf-day--today" aria-current="step">Day 2</li>
+        <li class="cf-day">Day 3</li>
+        <li class="cf-day cf-day--vote">Vote</li>
+      </ol>
+      <p class="cf-case__next"><span>Demo: the host moves the days</span><span>2 of 4 opened today</span></p>
+    </div>
+  </header>
+
+  <details class="cf-drawer">
+    <summary>Case brief</summary>
+    <div class="cf-drawer__body cf-stack">
+      <p style="margin:0">Five college friends rented a cabin on Lake Wendell for the weekend.</p>
+      <p style="margin:0">The owner's prized 1970s record player was found smashed in the Sunroom. The downstairs clock stopped when it fell: 7:00 PM. Whoever was in the Sunroom at 7:00 PM broke it.</p>
+    </div>
+  </details>
+
+  <section class="cf-stack" aria-labelledby="today">
+    <h2 class="cf-heading" id="today">Today's evidence</h2>
+    <article class="cf-clue cf-clue--message is-new">
+      <span class="cf-stamp cf-clue__flag">New today</span>
+      <div class="cf-clue__meta"><span class="cf-label">Exhibit 2 · Text message</span><span class="cf-label">Day 2</span></div>
+      <div class="cf-msg"><p class="cf-msg__bubble">Leo, 7:02 PM: still on the porch!! come out, the sunset over the lake is unreal</p></div>
+      <div class="cf-fact"><span class="cf-label">Fact</span><p class="cf-fact__text"><mark>Leo was seen on the Porch.</mark></p></div>
+    </article>
+  </section>
+
+  <details class="cf-drawer">
+    <summary>Your earlier clues (1)</summary>
+    <div class="cf-drawer__body">
+      <article class="cf-clue cf-clue--card">
+        <div class="cf-clue__meta"><span class="cf-label">Exhibit 1 · Photo caption</span><span class="cf-label">Day 1</span></div>
+        <p class="cf-clue__text">Caption on a blurry group-chat photo: no sign of Jordan anywhere when the downstairs clock stopped.</p>
+        <div class="cf-fact"><span class="cf-label">Fact</span><p class="cf-fact__text">Jordan was not seen at 7:00 PM.</p></div>
+      </article>
+    </div>
+  </details>
+
+  <details class="cf-drawer">
+    <summary>Your notebook</summary>
+    <div class="cf-drawer__body"><p class="cf-caption">The suspect × room, time and item grid opens here (see Notebook).</p></div>
+  </details>
+
+  <section class="cf-stack" aria-labelledby="shared">
+    <h2 class="cf-heading" id="shared">Opened for everyone</h2>
+    <article class="cf-clue cf-clue--card is-shared">
+      <div class="cf-clue__meta"><span class="cf-label">Note on the fridge · Drew's clue</span></div>
+      <p class="cf-clue__text">“Sam, you left your phone charger up in the Loft again.”</p>
+      <div class="cf-fact"><span class="cf-label">Fact</span><p class="cf-fact__text">Sam was seen in the Loft.</p></div>
+    </article>
+  </section>
+
+  <section class="cf-board" aria-labelledby="board">
+    <div class="cf-board__head"><h2 class="cf-heading" id="board">The board</h2><span class="cf-caption">2 posts today</span></div>
+    <article class="cf-post">
+      <span class="cf-avatar" aria-hidden="true">B</span>
+      <div class="cf-post__body">
+        <p class="cf-post__head"><span class="cf-post__name">Blake</span><span>9:41 AM</span></p>
+        <p class="cf-post__text">Mine says Leo was out on the porch. So not him in the Sunroom, right?</p>
+      </div>
+    </article>
+    <article class="cf-post cf-post--mine">
+      <span class="cf-avatar" aria-hidden="true">A</span>
+      <div class="cf-post__body">
+        <p class="cf-post__head"><span class="cf-post__name">You</span><span>9:47 AM</span></p>
+        <p class="cf-post__text">Jordan wasn't seen at 7:00 at all. Crossing him off.</p>
+      </div>
+    </article>
+  </section>
+
+  <form class="cf-composer cf-composer--bar" onsubmit="return false">
+    <label class="cf-sr" for="screen-post">Write a theory</label>
+    <input class="cf-input" id="screen-post" type="text" maxlength="280" placeholder="Write a theory">
+    <span class="cf-caption">0 / 280</span>
+    <button class="cf-btn cf-btn--primary" type="submit">Post</button>
+  </form>
+</div>
