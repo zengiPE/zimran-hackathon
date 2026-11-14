@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/cf/Button";
 import { PlayerInvite } from "@/components/cf/PlayerInvite";
 import { RevealBoard } from "@/components/cf/RevealBoard";
+import { Stamp } from "@/components/cf/Stamp";
 import { PaperLoader } from "@/components/cf/States";
 import { advanceDay, askHint, errorText, isStatus } from "@/lib/api";
 import type { HostOut, PlayerRow } from "@/lib/types";
@@ -93,11 +94,19 @@ export function HostScreen() {
               {host.demo && " · Demo"}
             </span>
             <h1 className="cf-heading">{host.title}</h1>
-            <p className="cf-caption">
-              {joined} of {total} joined
-              {host.phase === "play" && ` · ${opened} opened today's clue`}
-              {host.phase !== "play" && ` · ${host.votes_count} of ${total} voted`}
-            </p>
+            {/* Big enough to read from the back of the room on a projector. */}
+            <div className="cf-host__count">
+              <p className="cf-host__num" aria-live="polite">
+                {host.phase === "play" ? `${joined} of ${total} joined` : `${host.votes_count} of ${total} voted`}
+              </p>
+              {host.phase === "play" && joined === total && <Stamp>All in</Stamp>}
+              {host.phase !== "play" && host.votes_count === total && <Stamp>All voted</Stamp>}
+            </div>
+            {host.phase === "play" && (
+              <p className="cf-caption">
+                {opened} of {total} opened today&apos;s clue
+              </p>
+            )}
           </div>
           {host.phase !== "reveal" && (
             <div className="cf-note cf-host__actions">
