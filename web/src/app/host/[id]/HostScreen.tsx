@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/cf/Button";
 import { PlayerInvite } from "@/components/cf/PlayerInvite";
 import { RevealBoard } from "@/components/cf/RevealBoard";
+import { Stamp } from "@/components/cf/Stamp";
 import { PaperLoader } from "@/components/cf/States";
 import { advanceDay, askHint, errorText, isStatus } from "@/lib/api";
 import type { HostOut, PlayerRow } from "@/lib/types";
@@ -22,12 +23,13 @@ export function HostScreen() {
   const token = useSearchParams().get("token");
   const { data: host, error, mutate } = useHost(id, token);
   const reveal = useReveal(id, host?.phase === "reveal");
-  const [busy, setBusy] = useState(false);
+  // Which button is waiting for the server (it can take a few seconds on prod).
+  const [busy, setBusy] = useState<null | "hint" | "next">(null);
   const [note, setNote] = useState<string | null>(null);
 
   async function nextDay() {
     if (!token) return;
-    setBusy(true);
+    setBusy("next");
     setNote(null);
     try {
       const fresh = await advanceDay(id, token);
@@ -36,13 +38,13 @@ export function HostScreen() {
       if (isStatus(err, 409)) await mutate();
       else setNote(errorText(err));
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
   async function hint() {
     if (!token) return;
-    setBusy(true);
+    setBusy("hint");
     setNote(null);
     try {
       const { shared } = await askHint(id, token);
@@ -50,7 +52,7 @@ export function HostScreen() {
     } catch (err) {
       setNote(isStatus(err, 409) ? "No hints yet." : errorText(err));
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
@@ -93,21 +95,29 @@ export function HostScreen() {
               {host.demo && " · Demo"}
             </span>
             <h1 className="cf-heading">{host.title}</h1>
-            <p className="cf-caption">
-              {joined} of {total} joined
-              {host.phase === "play" && ` · ${opened} opened today's clue`}
-              {host.phase !== "play" && ` · ${host.votes_count} of ${total} voted`}
-            </p>
+            {/* Big enough to read from the back of the room on a projector. */}
+            <div className="cf-host__count">
+              <p className="cf-host__num" aria-live="polite">
+                {host.phase === "play" ? `${joined} of ${total} joined` : `${host.votes_count} of ${total} voted`}
+              </p>
+              {host.phase === "play" && joined === total && <Stamp>All in</Stamp>}
+              {host.phase !== "play" && host.votes_count === total && <Stamp>All voted</Stamp>}
+            </div>
+            {host.phase === "play" && (
+              <p className="cf-caption">
+                {opened} of {total} opened today&apos;s clue
+              </p>
+            )}
           </div>
           {host.phase !== "reveal" && (
             <div className="cf-note cf-host__actions">
               <div className="flex flex-wrap gap-2">
-                <Button small disabled={busy || host.phase !== "play"} onClick={hint}>
-                  Hint
+                <Button small disabled={busy !== null || host.phase !== "play"} onClick={hint}>
+                  {busy === "hint" ? "Finding a hint…" : "Hint"}
                 </Button>
                 {host.demo && (
-                  <Button variant="primary" small disabled={busy} onClick={nextDay}>
-                    {nextLabel}
+                  <Button variant="primary" small disabled={busy !== null} onClick={nextDay}>
+                    {busy === "next" ? "Working…" : nextLabel}
                   </Button>
                 )}
               </div>

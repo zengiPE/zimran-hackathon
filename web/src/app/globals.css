@@ -205,6 +205,22 @@ a.cf-btn:focus-visible {
   flex: 1 1 320px;
   gap: var(--space-2);
 }
+.cf-host__count {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+.cf-host__num {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 56px;
+  line-height: 1;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+}
 .cf-host__actions {
   flex: 0 1 auto;
   gap: var(--space-2);
