@@ -33,7 +33,7 @@ export function ClueCard({ clue, exhibit, isNew, shared }: Props) {
 
   const card = (
     <article className={clsx("cf-clue", `cf-clue--${kind}`, isNew && "is-new", shared && "is-shared")}>
-      {isNew && <Stamp className="cf-clue__flag">New today</Stamp>}
+      {isNew && kind !== "receipt" && <Stamp className="cf-clue__flag">New today</Stamp>}
       <div className="cf-clue__meta">
         <span className="cf-label">{label}</span>
         {!shared && <span className="cf-label">Day {clue.day}</span>}
@@ -56,6 +56,13 @@ export function ClueCard({ clue, exhibit, isNew, shared }: Props) {
     </article>
   );
 
-  // Receipts have a torn edge (CSS mask), so their shadow lives on a wrapper.
-  return kind === "receipt" ? <div className="cf-drop">{card}</div> : card;
+  // Receipts have a torn edge (a CSS mask that would also cut off the stamp),
+  // so their shadow and the "New today" stamp live on a wrapper.
+  if (kind !== "receipt") return card;
+  return (
+    <div className="cf-drop">
+      {card}
+      {isNew && <Stamp className="cf-clue__flag">New today</Stamp>}
+    </div>
+  );
 }

@@ -51,6 +51,7 @@ export function VotePicker({ question, suspects, myVote, votedCount, playersCoun
                 type="radio"
                 name={name}
                 value={s.id}
+                aria-label={`${s.name}, ${s.role}`}
                 checked={picked === s.id}
                 onChange={() => setPicked(s.id)}
               />

@@ -10,13 +10,14 @@ interface Props {
   name: string;
   url: string; // full link from the API, used as is
   joined: boolean;
+  status?: string; // e.g. "Opened today's clue"
 }
 
 /** Link without the protocol, so people can type it. */
 const shortLink = (url: string) => url.replace(/^https?:\/\//, "");
 
 /** Invite card for the Host screen: name, a real QR of the link, "Joined" stamp. */
-export function PlayerInvite({ name, url, joined }: Props) {
+export function PlayerInvite({ name, url, joined, status }: Props) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {
@@ -45,6 +46,7 @@ export function PlayerInvite({ name, url, joined }: Props) {
         {joined && <Stamp>Joined</Stamp>}
       </div>
       <p className="cf-invite__link">{shortLink(url)}</p>
+      {status && <p className="cf-caption">{status}</p>}
       <Button variant="quiet" onClick={copy}>
         {copied ? "Copied" : "Copy link"}
       </Button>

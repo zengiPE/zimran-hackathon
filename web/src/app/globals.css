@@ -86,3 +86,151 @@ a {
   opacity: 0.6;
   min-height: 96px;
 }
+
+/* ---------- App pieces not in the design bundle (built from its tokens) ---------- */
+
+/* Landing headline: the case-title face, bigger. */
+.cf-hero {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 48px;
+  line-height: 0.95;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  text-wrap: balance;
+  margin: 0;
+}
+.cf-lead {
+  font-size: 18px;
+  line-height: 26px;
+  margin: 0;
+}
+
+/* Landing: three steps as paper notes. */
+.cf-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+.cf-steps__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Form groups. */
+.cf-fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+.cf-fieldset > legend {
+  padding: 0;
+  margin-bottom: var(--space-3);
+}
+
+/* A paper card that works as a radio button (theme picker). */
+.cf-choice {
+  display: grid;
+  gap: var(--space-1);
+  background: var(--card);
+  border-radius: var(--radius-paper);
+  box-shadow: var(--shadow-paper);
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  outline: 3px solid transparent;
+  outline-offset: 3px;
+}
+.cf-choice:has(input:checked) {
+  outline-color: var(--stamp);
+}
+.cf-choice:has(input:focus-visible) {
+  outline-color: var(--ink);
+}
+.cf-choice__title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+/* Checkbox with a title and help text (Demo mode). */
+.cf-toggle {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  cursor: pointer;
+  min-height: 48px;
+}
+.cf-toggle input {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  accent-color: var(--stamp);
+}
+.cf-toggle input:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+.cf-toggle__title {
+  display: block;
+  font-weight: 600;
+}
+
+/* Quiet links that are real <a> elements get the focus ring too. */
+a.cf-btn:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+
+/* Host screen (landscape, for a projector). Text on cork only on paper. */
+.cf-host__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+.cf-host__case {
+  flex: 1 1 320px;
+  gap: var(--space-2);
+}
+.cf-host__actions {
+  flex: 0 1 auto;
+  gap: var(--space-2);
+}
+@media (min-width: 1024px) {
+  .cf-invites--host {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* A new clue fades in (160ms, like new posts). */
+.cf-fade {
+  animation: cf-post-in 160ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cf-fade {
+    animation: none;
+  }
+}
+
+/* Receipt wrapper: holds the stamp outside the torn-edge mask. */
+.cf-drop {
+  position: relative;
+  max-width: 300px;
+}
+
+/* Polaroids in one row share a height; keep the photo square instead of stretching it. */
+.cf-suspect {
+  align-content: start;
+}
