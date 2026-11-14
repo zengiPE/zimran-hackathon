@@ -1,10 +1,10 @@
 """Manual check of the narrator prompt against the real model.
 
-Usage (from api/, with ANTHROPIC_API_KEY in api/.env):
+Usage (from api/, with OPENAI_API_KEY and optionally OPENAI_MODEL in api/.env):
     uv run python -m scripts.try_narrative [lake-house|office-party]
 
-Prints each clue with its source: "llm" if Claude's text passed validation, otherwise
-"template" plus the reason. One run = one Claude call (a few cents at most).
+Prints each clue with its source: "llm" if the model's text passed validation, otherwise
+"template" plus the reason. One run = one LLM call (a few cents at most).
 """
 
 import logging
@@ -38,7 +38,7 @@ def main() -> None:
         if clue.source == "template" and fact.id not in llm_texts:
             print(f"  (template; validator would say: {validate_text(theme, fact, clue.text) or 'ok'})")
     used = sum(c.source == "llm" for c in clues)
-    print(f"\n{used}/{len(clues)} clues from Claude, the rest from templates.")
+    print(f"\n{used}/{len(clues)} clues from the LLM, the rest from templates.")
 
 
 if __name__ == "__main__":

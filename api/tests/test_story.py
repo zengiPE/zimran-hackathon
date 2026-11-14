@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
-import anthropic
 import httpx
+import openai
 import pytest
 
 from app.story import THEMES, ClueFact, get_theme, narrate_case, template_clue, validate_text
@@ -17,19 +17,24 @@ FACTS = [
 
 
 class FakeClient:
-    """Stands in for anthropic.Anthropic: returns canned texts or raises."""
+    """Stands in for openai.OpenAI: returns canned texts as JSON, or raises."""
 
-    def __init__(self, texts=None, error=None, stop_reason="end_turn"):
+    def __init__(self, texts=None, error=None, refusal=None, raw=None):
         self.calls = 0
-        self._texts, self._error, self._stop = texts or {}, error, stop_reason
-        self.beta = SimpleNamespace(messages=SimpleNamespace(parse=self._parse))
+        self.kwargs = None
+        self._texts, self._error, self._refusal, self._raw = texts or {}, error, refusal, raw
+        self.chat = SimpleNamespace(completions=SimpleNamespace(create=self._create))
 
-    def _parse(self, **kwargs):
+    def _create(self, **kwargs):
         self.calls += 1
+        self.kwargs = kwargs
         if self._error:
             raise self._error
         batch = _LLMBatch(clues=[_LLMClue(fact_id=k, text=v) for k, v in self._texts.items()])
-        return SimpleNamespace(stop_reason=self._stop, parsed_output=batch)
+        content = self._raw if self._raw is not None else batch.model_dump_json()
+        message = SimpleNamespace(content=None if self._refusal else content,
+                                  refusal=self._refusal)
+        return SimpleNamespace(choices=[SimpleNamespace(message=message, finish_reason="stop")])
 
 
 # --- themes ------------------------------------------------------------------------------
@@ -139,6 +144,7 @@ def test_llm_texts_used_when_valid():
     )
     clues = narrate_case(LAKE, FACTS, client=client)
     assert client.calls == 1, "all clues of a case come from a single LLM call"
+    assert client.kwargs["response_format"] == {"type": "json_object"}
     assert [c.source for c in clues] == ["llm", "llm", "llm"]
     assert [c.fact_id for c in clues] == ["f1", "f2", "f3"]
     assert all(c.statement == f.statement for c, f in zip(clues, FACTS))
@@ -159,8 +165,8 @@ def test_bad_llm_text_falls_back_per_clue():
 @pytest.mark.parametrize(
     "error",
     [
-        anthropic.APIConnectionError(request=httpx.Request("POST", "https://api.anthropic.com")),
-        anthropic.APITimeoutError(request=httpx.Request("POST", "https://api.anthropic.com")),
+        openai.APIConnectionError(request=httpx.Request("POST", "https://api.openai.com")),
+        openai.APITimeoutError(request=httpx.Request("POST", "https://api.openai.com")),
     ],
 )
 def test_api_failure_uses_templates(error):
@@ -169,8 +175,14 @@ def test_api_failure_uses_templates(error):
 
 
 def test_refusal_uses_templates():
-    client = FakeClient(texts={"f1": "Maya was not in the Kitchen."}, stop_reason="refusal")
+    client = FakeClient(texts={"f1": "Maya was not in the Kitchen."}, refusal="I can't help.")
     assert all(c.source == "template" for c in narrate_case(LAKE, FACTS, client=client))
+
+
+@pytest.mark.parametrize("raw", ["not json at all", '{"clues": "oops"}', ""])
+def test_malformed_json_uses_templates(raw):
+    clues = narrate_case(LAKE, FACTS, client=FakeClient(raw=raw))
+    assert [c.source for c in clues] == ["template"] * 3
 
 
 def test_no_api_key_uses_templates(monkeypatch):

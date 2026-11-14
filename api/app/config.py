@@ -10,9 +10,9 @@ class Settings(BaseSettings):
     # Comma-separated list of allowed frontend origins
     cors_origins: str = "http://localhost:3000"
 
-    # LLM keys (fill in .env, never commit)
-    anthropic_api_key: str = ""
+    # LLM (OpenAI): clue narration and AI teammates' lines. No key = template texts.
     openai_api_key: str = ""
+    openai_model: str = "gpt-5-mini"
 
     # Database. Locally a SQLite file; on Vercel set DATABASE_URL to Postgres (Neon/Supabase):
     # serverless functions don't keep files between requests.

@@ -38,15 +38,16 @@ Every case is generated from a seed by a logic engine (`api/app/engine/`):
   down to the last ones, and every one of them points at the same culprit.
 - **AI teammates** (`api/app/ai/`) know only their own clues and what is posted on the board. Their
   suspicions come from the same solver, so they never name someone already cleared and never
-  invent facts. Claude only phrases what they say; each line is checked, with a template fallback.
+  invent facts. The LLM only phrases what they say; each line is checked, with a template fallback.
 
-### Where Claude comes in
+### Where the LLM comes in
 
-Claude (`claude-sonnet-5-5`) never decides what is true. When a case is created it rewrites each
-clue as an in-world document (a text message, a receipt, a guestbook entry). The text is accepted
-only if it mentions every name and value of the fact and no other suspect, room, time or item;
-otherwise that clue uses a template. In short: Claude **narrates when `ANTHROPIC_API_KEY` is set,
-template wording otherwise**. The exact fact is always shown under the story.
+The LLM (OpenAI, model set by `OPENAI_MODEL`, default `gpt-5-mini`) never decides what is true.
+When a case is created it rewrites each clue as an in-world document (a text message, a receipt,
+a guestbook entry). The text is accepted only if it mentions every name and value of the fact and
+no other suspect, room, time or item; otherwise that clue uses a template. In short: the LLM
+**narrates when `OPENAI_API_KEY` is set, template wording otherwise**. The exact fact is always
+shown under the story.
 
 ## Product
 
@@ -68,7 +69,7 @@ template wording otherwise**. The exact fact is always shown under the story.
 | Part | What |
 | --- | --- |
 | `web/` | Next.js 16 (App Router), React 19, Tailwind 4, SWR, Framer Motion, qrcode.react, lucide-react |
-| `api/` | FastAPI, SQLModel, numpy (solver), Anthropic SDK, Stripe, psycopg |
+| `api/` | FastAPI, SQLModel, numpy (solver), OpenAI SDK, Stripe, psycopg |
 | Data | Postgres (Neon) on Vercel, SQLite locally |
 | Payments | Stripe Checkout in test mode (live keys are rejected by the API) |
 | Hosting | Vercel, two projects: `web/` and `api/` (FastAPI as a Vercel Function) |
@@ -81,12 +82,12 @@ Needs Node.js 22+, Python 3.12 and [uv](https://docs.astral.sh/uv/).
 ```bash
 npm run setup                       # web + api dependencies
 cp web/.env.example web/.env.local
-cp api/.env.example api/.env        # optional: ANTHROPIC_API_KEY, Stripe test keys
+cp api/.env.example api/.env        # optional: OPENAI_API_KEY, Stripe test keys
 npm run dev                         # web on :3000, api on :8000
 ```
 
 - App: http://localhost:3000 · API docs (Swagger): http://localhost:8000/docs
-- Without `ANTHROPIC_API_KEY` clues use template wording; without Stripe keys the paywall shows
+- Without `OPENAI_API_KEY` clues use template wording; without Stripe keys the paywall shows
   "Payments are off in this demo."
 
 Checks (the same run in CI on every pull request):
@@ -103,7 +104,8 @@ npm run build --prefix web
 web/                Next.js app (see web/README.md for pages, components and the demo flow)
 api/
   app/engine/       facts, solver (1,728,000 worlds as numpy masks), case generator
-  app/story/        themes and Claude narration with validation and templates
+  app/story/        themes and LLM narration with validation and templates
+  app/llm_client.py the single OpenAI client both LLM features use
   app/ai/           AI teammates: personas, turns, validated replies
   app/cases.py      game API: create, /me, /host, board, vote, advance, hint, reveal, next case
   app/crew.py       crews playing case after case: record, streak, access to the next case
@@ -130,5 +132,5 @@ Ops notes:
   `checkout.session.completed` and `checkout.session.expired` (test mode). Locally:
   `stripe listen --forward-to localhost:8000/api/stripe/webhook`, then put the `whsec_…` into
   `STRIPE_WEBHOOK_SECRET`. The paywall also confirms payment itself after the redirect.
-- Try the narration prompt on the real model (needs `ANTHROPIC_API_KEY` in `api/.env`):
+- Try the narration prompt on the real model (needs `OPENAI_API_KEY` in `api/.env`):
   `cd api && uv run python -m scripts.try_narrative lake-house`.
