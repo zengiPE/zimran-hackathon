@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     # Stripe (test mode keys: sk_test_..., whsec_...)
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
-    # Where Stripe Checkout sends the player back (the web app, not the API)
+    # The web app origin: Stripe Checkout returns here, invite links point here
     public_web_url: str = "http://localhost:3000"
 
     @property
