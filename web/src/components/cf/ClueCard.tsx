@@ -1,12 +1,17 @@
 import clsx from "clsx";
 import type { Clue } from "@/lib/types";
+import { Button } from "./Button";
 import { Stamp } from "./Stamp";
+import { SuspectText } from "./SuspectText";
 
 interface Props {
   clue: Clue;
   exhibit?: number; // position N among the player's clues
   isNew?: boolean; // today's clue
   shared?: boolean; // from shared_clues
+  suspectNames?: string[]; // suspect names in the story become links to the notebook
+  used?: boolean; // shared clue the player marked as already used
+  onToggleUsed?: () => void; // shows "Mark as used" on shared clues
 }
 
 type Kind = "message" | "receipt" | "card";
@@ -20,7 +25,7 @@ function kindOf(format: string | null): Kind {
 }
 
 /** A clue as a paper document, with its exact fact printed underneath. */
-export function ClueCard({ clue, exhibit, isNew, shared }: Props) {
+export function ClueCard({ clue, exhibit, isNew, shared, suspectNames, used, onToggleUsed }: Props) {
   const story = clue.story ?? clue.text;
   // Hide the Fact strip when it would just repeat the story word for word.
   const showFact = clue.story !== null && !clue.story.includes(clue.text);
@@ -32,26 +37,45 @@ export function ClueCard({ clue, exhibit, isNew, shared }: Props) {
     : `Exhibit ${exhibit ?? 1} · ${format}`;
 
   const card = (
-    <article className={clsx("cf-clue", `cf-clue--${kind}`, isNew && "is-new", shared && "is-shared")}>
+    <article
+      className={clsx("cf-clue", `cf-clue--${kind}`, isNew && "is-new", shared && "is-shared", used && "is-used")}
+    >
       {isNew && kind !== "receipt" && <Stamp className="cf-clue__flag">New today</Stamp>}
       <div className="cf-clue__meta">
         <span className="cf-label">{label}</span>
         {!shared && <span className="cf-label">Day {clue.day}</span>}
+        {shared && used && <span className="cf-label">Used</span>}
       </div>
 
       {kind === "message" && (
         <div className="cf-msg">
-          <p className="cf-msg__bubble">{story}</p>
+          <p className="cf-msg__bubble">
+            <SuspectText text={story} names={suspectNames} />
+          </p>
         </div>
       )}
-      {kind === "receipt" && <p className="cf-receipt__body">{story}</p>}
-      {kind === "card" && <p className="cf-clue__text">{story}</p>}
+      {kind === "receipt" && (
+        <p className="cf-receipt__body">
+          <SuspectText text={story} names={suspectNames} />
+        </p>
+      )}
+      {kind === "card" && (
+        <p className="cf-clue__text">
+          <SuspectText text={story} names={suspectNames} />
+        </p>
+      )}
 
       {showFact && (
         <div className="cf-fact">
           <span className="cf-label">Fact</span>
           <p className="cf-fact__text">{isNew ? <mark>{clue.text}</mark> : clue.text}</p>
         </div>
+      )}
+
+      {shared && onToggleUsed && (
+        <Button variant="quiet" className="justify-self-start" aria-pressed={Boolean(used)} onClick={onToggleUsed}>
+          {used ? "Used, tap to undo" : "Mark as used"}
+        </Button>
       )}
     </article>
   );
