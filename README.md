@@ -56,7 +56,10 @@ web/            Next.js фронтенд
 api/            FastAPI бэкенд
   app/main.py   точка входа, роуты
   app/config.py настройки из .env
+  app/db.py     общая БД (SQLModel): SessionDep, таблицы регистрируются в app/models.py
+  app/events.py лог событий: created, joined, clue_opened, voted, paid…
   app/story/    темы и нарратив улик (Ч3)
+  app/payments/ Stripe Checkout, paywall (Ч3)
   scripts/      ручные проверки (try_narrative.py)
   tests/        pytest
 ```
@@ -83,6 +86,26 @@ ClueFact(id="f7", statement="Maya was not in the Kitchen.", mentions=("Maya", "K
 ```bash
 cd api && uv run python -m scripts.try_narrative lake-house
 ```
+
+## Оплата и лог событий (`api/app/payments/`, `api/app/events.py`)
+
+Stripe Checkout **только в тестовом режиме**: ключи `sk_live_` API отвергает. Цены: `case` — $12 за дело на компанию, `monthly` — $7.99 в месяц.
+
+| Эндпоинт | Что делает |
+|---|---|
+| `GET /api/plans` | Цены для экрана Paywall (UI их не хардкодит) |
+| `POST /api/checkout` `{case_id, plan?: "case"\|"monthly"}` | → `{url, session_id}`; фронт делает редирект на `url` |
+| `GET /api/checkout/{session_id}` | Страница успеха вызывает его после возврата из Stripe и **сама подтверждает оплату**, даже если webhook не дошёл (план Б из ТЗ) |
+| `GET /api/cases/{case_id}/payment` | `{paid, plan, status}` |
+| `POST /api/stripe/webhook` | `checkout.session.completed` / `expired`, подпись проверяется |
+
+**Для фронта (Ч2).** Stripe возвращает игрока на `PUBLIC_WEB_URL/paywall?case_id=…&checkout=success&session_id=…` (или `&checkout=canceled`). Страница `/paywall` при `checkout=success` вызывает `GET /api/checkout/{session_id}` и показывает «оплачено». Тестовая карта: `4242 4242 4242 4242`, любая будущая дата, любой CVC.
+
+**Лог событий.** `log_event(session, "joined", case_id, actor="Maya")` пишет событие в таблицу `event`. Типы: `created`, `joined`, `clue_opened`, `voted`, `revealed`, `checkout_started`, `paid`. `funnel(session)` считает, сколько дел дошло до каждого шага (цифры для слайда). `checkout_started` и `paid` уже пишутся; остальные события пишет API дел (Ч1).
+
+**Webhook локально:** `stripe listen --forward-to localhost:8000/api/stripe/webhook`; выданный `whsec_…` положите в `STRIPE_WEBHOOK_SECRET`. На Vercel: Stripe Dashboard (Test mode) → Developers → Webhooks → endpoint `https://zimran-hackathon-api.vercel.app/api/stripe/webhook`, события `checkout.session.completed`, `checkout.session.expired`.
+
+**БД.** `DATABASE_URL`: локально по умолчанию `sqlite:///./casefile.db`. На Vercel файлы между запросами не живут, поэтому там нужен Postgres (Neon или Supabase); строку `postgres://…` можно вставлять как есть.
 
 ## Правила команды
 
