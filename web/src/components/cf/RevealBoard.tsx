@@ -9,7 +9,7 @@ import {
   useTransform,
   type AnimationPlaybackControls,
 } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { caseCopy } from "@/lib/caseCopy";
 import { formatNumber } from "@/lib/format";
 import type { RevealOut, Suspect } from "@/lib/types";
@@ -20,6 +20,7 @@ import { SuspectCard } from "./SuspectCard";
 interface Props {
   reveal: RevealOut;
   suspects: Suspect[]; // from /me or /host
+  children?: ReactNode; // under the votes: crew record and the next-case button
 }
 
 interface StringPath {
@@ -40,7 +41,7 @@ const easeOutCubic = [0.33, 1, 0.68, 1] as const;
  * as their string finishes; then "Guilty" and the verdict.
  * Under prefers-reduced-motion everything shows in its final state at once.
  */
-export function RevealBoard({ reveal, suspects }: Props) {
+export function RevealBoard({ reveal, suspects, children }: Props) {
   const { culprit, chain, stats, votes, truth } = reveal;
   const reduce = useReducedMotion() ?? false;
 
@@ -217,9 +218,11 @@ export function RevealBoard({ reveal, suspects }: Props) {
             ))}
           </ul>
         )}
-        <ButtonLink variant="primary" href={`/paywall?case_id=${encodeURIComponent(reveal.case_id)}`}>
-          Open the next case
-        </ButtonLink>
+        {children ?? (
+          <ButtonLink variant="primary" href={`/paywall?case_id=${encodeURIComponent(reveal.case_id)}`}>
+            Open the next case
+          </ButtonLink>
+        )}
       </div>
 
       <svg className="cf-reveal__strings" aria-hidden="true">

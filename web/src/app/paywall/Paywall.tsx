@@ -4,10 +4,12 @@ import { useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import useSWR from "swr";
 import { Button, ButtonLink } from "@/components/cf/Button";
+import { NextCase } from "@/components/cf/NextCase";
 import { Stamp } from "@/components/cf/Stamp";
 import { ErrorNote, PaperLoader, PaperSkeleton, Screen } from "@/components/cf/States";
 import { errorText, getCheckout, getPayment, getPlans, isStatus, startCheckout } from "@/lib/api";
 import { formatPrice } from "@/lib/format";
+import { readJSON, writeJSON } from "@/lib/storage";
 import type { Plan } from "@/lib/types";
 
 
@@ -16,6 +18,16 @@ export function Paywall() {
   const caseId = params.get("case_id");
   const checkout = params.get("checkout"); // "success" | "canceled" | null
   const sessionId = params.get("session_id");
+  // Who is paying: a player (token) or the host (host_token). Needed to open the next case after paying.
+  const token = params.get("token");
+  const hostToken = params.get("host_token");
+  const fromLink = token ? { token } : hostToken ? { host_token: hostToken } : null;
+  // Stripe sends us back without the token, so remember it in this browser before checkout.
+  const authKey = `casefile:paywall-auth:${caseId}`;
+  const [auth] = useState(() => {
+    if (fromLink) writeJSON(authKey, fromLink);
+    return fromLink ?? readJSON<{ token: string } | { host_token: string }>(authKey);
+  });
 
   const plans = useSWR("plans", getPlans, { revalidateOnFocus: false });
   // Already paid? (e.g. the page is opened again later)
@@ -76,10 +88,19 @@ export function Paywall() {
         </header>
         <div className="cf-verdict">
           <Stamp big>Paid</Stamp>
-          <p className="m-0">Thanks! Your group&apos;s next case is unlocked. Start it whenever everyone is ready.</p>
-          <ButtonLink variant="primary" href="/#create">
-            Start the next case
-          </ButtonLink>
+          <p className="m-0">Thanks! Your crew&apos;s next case is unlocked. Same friends, new mystery.</p>
+          {auth ? (
+            <NextCase
+              caseId={caseId}
+              auth={auth}
+              caseNumber={1}
+              access={{ requires_payment: false, paid: true, plan: null, payments_enabled: true }}
+            />
+          ) : (
+            <ButtonLink variant="primary" href="/#create">
+              Start the next case
+            </ButtonLink>
+          )}
         </div>
       </Screen>
     );

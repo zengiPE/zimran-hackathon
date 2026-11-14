@@ -5,10 +5,12 @@ import { useEffect, useRef, useState } from "react";
 import { Board } from "@/components/cf/BoardPost";
 import { CaseHeader } from "@/components/cf/CaseHeader";
 import { ClueCard } from "@/components/cf/ClueCard";
+import { CrewRecord } from "@/components/cf/CrewRecord";
 import { DemoBar } from "@/components/cf/DemoBar";
 import { Composer } from "@/components/cf/Composer";
 import { Drawer } from "@/components/cf/Drawer";
 import { Notebook } from "@/components/cf/Notebook";
+import { NextCase } from "@/components/cf/NextCase";
 import { RevealBoard } from "@/components/cf/RevealBoard";
 import { ShareClue } from "@/components/cf/ShareClue";
 import { Roster } from "@/components/cf/RosterRow";
@@ -17,8 +19,8 @@ import { VotePicker } from "@/components/cf/VotePicker";
 import { advanceDay, askHint, castVote, errorText, isStatus, postBoard } from "@/lib/api";
 import { caseCopy } from "@/lib/caseCopy";
 import { paragraphs } from "@/lib/format";
-import { loadCase, readJSON, writeJSON } from "@/lib/storage";
-import type { Clue } from "@/lib/types";
+import { loadCase, readJSON, saveCase, writeJSON } from "@/lib/storage";
+import type { Clue, NextCaseOut } from "@/lib/types";
 import { useMe, useReveal } from "@/lib/useCase";
 
 export function PlayerScreen() {
@@ -30,6 +32,11 @@ export function PlayerScreen() {
 
   // A demo case created in this browser: we know every seat and the host token.
   const [saved] = useState(() => loadCase(id));
+
+  // A demo case created here: remember the next case's seats too, so DemoBar keeps working.
+  function rememberNext(out: NextCaseOut) {
+    if (saved) saveCase({ case_id: out.case_id, host_token: out.host_token, invites: out.invites, demo: true });
+  }
 
   // "Case brief" is open on the first visit, collapsed after.
   const briefKey = `brief-seen:${id}:${token}`;
@@ -79,11 +86,22 @@ export function PlayerScreen() {
 
   // ---- Reveal: the cork board takes the whole screen ----
   if (me.phase === "reveal") {
+    const crew = me.crew ?? reveal.data?.crew;
     return (
       <main className="cf-cork min-h-dvh">
         <div className="mx-auto max-w-[960px]">
           {reveal.data ? (
-            <RevealBoard reveal={reveal.data} suspects={me.suspects} />
+            <RevealBoard reveal={reveal.data} suspects={me.suspects}>
+              {crew && <CrewRecord crew={crew} />}
+              <NextCase
+                caseId={id}
+                auth={{ token }}
+                caseNumber={crew?.case_number ?? 1}
+                access={me.next_access ?? reveal.data.next_access}
+                nextUrl={me.next_case?.url}
+                onOpened={rememberNext}
+              />
+            </RevealBoard>
           ) : reveal.error ? (
             <ErrorNote>{errorText(reveal.error)}</ErrorNote>
           ) : (
@@ -193,6 +211,7 @@ export function PlayerScreen() {
         demo={me.demo}
         playersCount={me.players.length}
         openedCount={opened}
+        caseNumber={me.crew?.case_number}
       />
 
       <Drawer title="Case brief" defaultOpen={briefOpen} bodyClassName="cf-stack">

@@ -9,6 +9,7 @@ import type {
   CreateCaseOut,
   HostOut,
   MeOut,
+  NextCaseOut,
   PaymentOut,
   Plan,
   RevealOut,
@@ -76,6 +77,12 @@ export const advanceDay = (id: string, hostToken: string) =>
 export const askHint = (id: string, hostToken: string) =>
   post<{ shared: Clue }>(`/api/cases/${q(id)}/hint`, { host_token: hostToken });
 export const getReveal = (id: string) => request<RevealOut>(`/api/cases/${q(id)}/reveal`);
+/**
+ * After the reveal: open the crew's next case (same seats, new mystery).
+ * Pass a player token or the host token. 402 = someone has to pay first.
+ */
+export const openNextCase = (id: string, auth: { token: string } | { host_token: string }) =>
+  post<NextCaseOut>(`/api/cases/${q(id)}/next`, auth);
 
 // ---- Payments ----
 export const getPlans = () => request<Plan[]>("/api/plans");

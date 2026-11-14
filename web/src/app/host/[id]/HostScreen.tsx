@@ -3,6 +3,8 @@
 import { useParams, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/cf/Button";
+import { CrewRecord } from "@/components/cf/CrewRecord";
+import { NextCase } from "@/components/cf/NextCase";
 import { PlayerInvite } from "@/components/cf/PlayerInvite";
 import { RevealBoard } from "@/components/cf/RevealBoard";
 import { Stamp } from "@/components/cf/Stamp";
@@ -91,7 +93,7 @@ export function HostScreen() {
         <header className="cf-host__head">
           <div className="cf-note cf-host__case">
             <span className="cf-label">
-              Case file · {where}
+              Case file{host.crew && host.crew.case_number > 1 ? ` #${host.crew.case_number}` : ""} · {where}
               {host.demo && " · Demo"}
             </span>
             <h1 className="cf-heading">{host.title}</h1>
@@ -132,7 +134,16 @@ export function HostScreen() {
 
         {host.phase === "reveal" ? (
           reveal.data ? (
-            <RevealBoard reveal={reveal.data} suspects={host.suspects} />
+            <RevealBoard reveal={reveal.data} suspects={host.suspects}>
+              {(host.crew ?? reveal.data.crew) && <CrewRecord crew={host.crew ?? reveal.data.crew!} />}
+              <NextCase
+                caseId={id}
+                auth={{ host_token: token }}
+                caseNumber={host.crew?.case_number ?? 1}
+                access={host.next_access ?? reveal.data.next_access}
+                nextUrl={host.next_case?.host_url}
+              />
+            </RevealBoard>
           ) : reveal.error ? (
             <p className="cf-error">{errorText(reveal.error)}</p>
           ) : (

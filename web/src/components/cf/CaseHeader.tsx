@@ -15,11 +15,12 @@ interface Props {
   demo: boolean;
   playersCount: number;
   openedCount: number; // how many opened today's clue
+  caseNumber?: number; // the crew's case number: "Case file #2"
 }
 
 /** Top of the player screen: folder tab, title, day track and countdown. */
 export function CaseHeader(props: Props) {
-  const { title, day, daysTotal, phase, nextUnlockAt, demo, playersCount, openedCount } = props;
+  const { title, day, daysTotal, phase, nextUnlockAt, demo, playersCount, openedCount, caseNumber } = props;
   const now = useNow();
   const voting = phase !== "play";
 
@@ -38,7 +39,7 @@ export function CaseHeader(props: Props) {
 
   return (
     <header className="cf-case">
-      <span className="cf-case__tab">Case file</span>
+      <span className="cf-case__tab">Case file{caseNumber && caseNumber > 1 ? ` #${caseNumber}` : ""}</span>
       <div className="cf-case__body">
         <p className="cf-case__theme">
           {where} · {playersCount} players
