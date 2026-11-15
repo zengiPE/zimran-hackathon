@@ -220,6 +220,99 @@ def test_typing_delay_hides_posts(monkeypatch) -> None:
     assert sorted(state["typing"]) == sorted(i["name"] for i in case["invites"] if i["ai"])
 
 
+# ---------- "Nora, anything about Leo?" ----------
+
+def _replies_after(state: dict, text: str) -> list[dict]:
+    texts = [b["text"] for b in state["board"]]
+    return [b for b in state["board"][texts.index(text) + 1:] if b["is_ai"]]
+
+
+def _belief(case_id: str, ai_name: str) -> tuple[dict, list[dict], list[str]]:
+    """What the named AI knows and believes right now, straight from the engine."""
+    from app.db import get_engine as _engine
+    from app.game_models import Case
+
+    with Session(_engine()) as s:
+        case = s.get(Case, case_id)
+        ai = s.exec(select(Player).where(Player.case_id == case_id,
+                                         Player.name == ai_name)).one()
+        data = case.data
+        clues = friends.known_clues(data, ai.idx, 1, set(case.shared),
+                                    friends.board_fact_ids(s, case_id))
+        return data, clues, friends.suspect_names(data, friends.possible(data, clues))
+
+
+@pytest.mark.parametrize("seed", [7, 11, 23])
+@pytest.mark.parametrize("ai_name", ["Nora", "Felix", "Kai"])
+def test_named_ai_answers_about_the_named_suspect(seed: int, ai_name: str) -> None:
+    case = solo_case(seed)
+    cid, human = case["case_id"], case["invites"][0]
+    state = me(cid, human["token"])
+    data = client.get(f"/api/cases/{cid}/me", params={"token": human["token"]}).json()
+    for suspect in [s["name"] for s in data["suspects"]][:3]:
+        question = f"{ai_name.lower()}, anything about {suspect}?"  # any case works
+        resp = client.post(f"/api/cases/{cid}/board",
+                           json={"token": human["token"], "text": question})
+        assert resp.status_code == 201
+        state = me(cid, human["token"])
+        replies = _replies_after(state, question)
+        assert replies and replies[0]["author"] == ai_name, replies
+        answer = replies[0]["text"]
+        assert suspect in answer
+
+        _, _, poss = _belief(cid, ai_name)
+        if poss == [suspect]:
+            assert answer.startswith(f"It's {suspect}")
+        elif suspect in poss:
+            assert "Still possible" in answer
+        else:
+            assert f"{suspect} is out for me" in answer
+
+
+def test_ruled_out_answer_cites_a_clue_that_really_rules_them_out() -> None:
+    for seed in range(30):
+        case = generate_case(seed=seed, theme="lake-house", players=4, days=3)
+        clues = [c for c in case["clues"] if c["player"] == 1]
+        poss = friends.possible(case, clues)
+        out = [i for i in range(len(case["suspects"])) if i not in poss]
+        for sid in out:
+            reason = friends.ruling_out_clue(case, clues, sid)
+            if reason is None:  # only several clues together rule them out
+                continue
+            rest = [c for c in clues if c["text"] != reason]
+            assert sid in friends.possible(case, rest)
+            assert reason in {c["text"] for c in clues}
+
+
+def test_answer_lines_follow_the_engine() -> None:
+    assert friends.answer_line(["Leo"], "Leo", None).startswith("It's Leo")
+    assert "Still possible" in friends.answer_line(["Leo", "Maya"], "Leo", None)
+    out = friends.answer_line(["Maya", "Sam"], "Leo", "Leo was not in the Kitchen.")
+    assert out.startswith("Leo is out for me") and "Leo was not in the Kitchen." in out
+
+
+def test_llm_answer_may_name_the_asked_suspect(monkeypatch) -> None:
+    for seed in range(50):  # a case where this AI has already ruled someone out
+        case = generate_case(seed=seed, theme="lake-house", players=4, days=3)
+        clues = [c for c in case["clues"] if c["player"] == 1]
+        poss = friends.suspect_names(case, friends.possible(case, clues))
+        outsider = next((s["name"] for s in case["suspects"] if s["name"] not in poss), None)
+        if outsider:
+            break
+    assert outsider
+    monkeypatch.setattr(llm, "chat_line", lambda ctx: f"{outsider} is out for me.")
+    text, source = friends.write_line(case, PERSONAS[0], "answer", random.Random(1), clues,
+                                      poss, [], "Ann", outsider)
+    assert source == "llm" and text == f"{outsider} is out for me."
+
+
+def test_first_named_picks_the_earliest_whole_word() -> None:
+    names = ["Nora", "Kai", "Felix"]
+    assert friends.first_named("hey KAI and nora", names) == "Kai"
+    assert friends.first_named("Kaiser roll? Noranda?", names) is None
+    assert friends.first_named("", names) is None
+
+
 def test_mixed_seats_and_flag_off(monkeypatch) -> None:
     resp = client.post("/api/cases", json={
         "players": ["Ann", "Bo", {"name": "Robo", "ai": True}], "demo": True, "seed": 4})
