@@ -291,11 +291,13 @@ export function PlayerScreen() {
             {today ? (
               <div key={today.id} className="cf-fade cf-stack">
                 <ClueCard clue={today} exhibit={exhibit(today.id)} isNew suspectNames={suspectNames} />
-                {canShare && <ShareClue shared={sharedIds.has(today.id)} onShare={() => post("", today.id)} />}
-                {!viewingAi && (
-                  <CoachMark id="your-clue">
-                    This clue is yours: nobody else has it. Share it, or the group can&apos;t solve the case.
-                  </CoachMark>
+                {canShare && (
+                  <ShareClue
+                    shared={sharedIds.has(today.id)}
+                    onShare={() => post("", today.id)}
+                    prominent
+                    withAi={hasAi}
+                  />
                 )}
               </div>
             ) : (
