@@ -71,7 +71,8 @@ def chat_line(ctx: ReplyContext) -> str | None:
     if client is None:
         return None
     try:
-        response = client.chat.completions.create(
+        response = llm_client.chat(
+            client,
             model=llm_client.model(),
             max_completion_tokens=2000,
             messages=[

@@ -42,7 +42,8 @@ Every case is generated from a seed by a logic engine (`api/app/engine/`):
 
 ### Where the LLM comes in
 
-The LLM (OpenAI, model set by `OPENAI_MODEL`, default `gpt-5-mini`) never decides what is true.
+The LLM (OpenAI, model set by `OPENAI_MODEL`, default `gpt-5-mini` with `OPENAI_REASONING_EFFORT=minimal`
+for speed) never decides what is true.
 When a case is created it rewrites each clue as an in-world document (a text message, a receipt,
 a guestbook entry). The text is accepted only if it mentions every name and value of the fact and
 no other suspect, room, time or item; otherwise that clue uses a template. In short: the LLM

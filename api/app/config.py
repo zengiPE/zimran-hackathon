@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     # LLM (OpenAI): clue narration and AI teammates' lines. No key = template texts.
     openai_api_key: str = ""
     openai_model: str = "gpt-5-mini"
+    # gpt-5 models think before answering; "minimal" keeps narration fast enough for the
+    # Create case request. Sent only to reasoning models (gpt-5*, o*), so it is safe with
+    # gpt-4.1 / gpt-4o too. Empty = never send it.
+    openai_reasoning_effort: str = "minimal"
 
     # Database. Locally a SQLite file; on Vercel set DATABASE_URL to Postgres (Neon/Supabase):
     # serverless functions don't keep files between requests.
