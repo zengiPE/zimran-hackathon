@@ -92,6 +92,8 @@ def validate_reply(theme_id: str, text: str, allowed_suspects: set[str],
     """None if the line is acceptable; otherwise why it is not."""
     if not text or len(text) > llm.MAX_CHARS:
         return "empty or too long"
+    if llm.LEAK_RE.search(text):
+        return "quotes the prompt's field names"
     theme = get_theme(theme_id)
     for name in theme.suspect_names:
         if name not in allowed_suspects and _contains(text, name):
