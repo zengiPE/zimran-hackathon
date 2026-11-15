@@ -306,6 +306,21 @@ def test_llm_answer_may_name_the_asked_suspect(monkeypatch) -> None:
     assert source == "llm" and text == f"{outsider} is out for me."
 
 
+@pytest.mark.parametrize("line", [
+    "Leo's still on the list since he's in \"possible,\" but who knows.",
+    "Leo is in possible for me.",
+    "Per my_clues, Leo is out.",
+])
+def test_lines_quoting_prompt_fields_are_rejected(line: str) -> None:
+    assert friends.validate_reply("lake-house", line, {"Leo"}, set()) == \
+        "quotes the prompt's field names"
+
+
+def test_plain_possible_wording_is_fine() -> None:
+    assert friends.validate_reply("lake-house", "Leo is still possible for me.", {"Leo"},
+                                  set()) is None
+
+
 def test_first_named_picks_the_earliest_whole_word() -> None:
     names = ["Nora", "Kai", "Felix"]
     assert friends.first_named("hey KAI and nora", names) == "Kai"

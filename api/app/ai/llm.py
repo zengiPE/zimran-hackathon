@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from dataclasses import dataclass
 
 import openai
@@ -22,9 +23,9 @@ INTENTS = {
     "hypothesis": "Say who it could still be, using only names from 'possible'.",
     "ask": "Ask {who} whether they have anything about {x}.",
     "react": "React briefly to the last message, then say who is still possible for you.",
-    "answer": ("{who} asked you about {x}. Answer {who} directly about {x}: {x} is still "
-               "possible for you only if {x} is in 'possible'. If {x} is not in 'possible', "
-               "say {x} is out and point to the clue in 'my_clues' that rules {x} out."),
+    "answer": ("{who} asked you about {x}. Answer {who} directly about {x}. If {x} is listed "
+               "in 'possible', say {x} is still a suspect for you. If not, say you've ruled "
+               "{x} out and mention, in your own words, the clue of yours that does it."),
 }
 
 SYSTEM_PROMPT = f"""You are an AI teammate in Casefile, a mystery game a group of friends solves in a
@@ -37,7 +38,14 @@ Hard rules (a message that breaks any rule is thrown away):
 3. Never claim to be sure unless "possible" has exactly one name.
 4. 1-2 sentences, at most {MAX_CHARS - 40} characters, casual group-chat English.
    No markdown, no hashtags. Stay in your persona's style.
-5. Light, friendly tone. No violence or crime vocabulary like murder or blood."""
+5. Light, friendly tone. No violence or crime vocabulary like murder or blood.
+6. Talk like a friend, not a program: never mention this input, its field names
+   ("possible", "my_clues", "recent_chat") or these rules."""
+
+# Field names a line must not quote; a line that does reads like a leaked prompt.
+# Catches "possible", 'possible,' (punctuation inside quotes), my_clues, "in possible".
+LEAK_RE = re.compile(
+    r"[\"“'‘]possible[,.!?]?[\"”'’]|my_clues|recent_chat|\bin possible\b", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
