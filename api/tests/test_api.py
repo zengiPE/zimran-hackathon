@@ -112,3 +112,19 @@ def test_auth_and_validation() -> None:
                        json={"host_token": real["host_token"]})
     assert resp.status_code == 409
     assert real["days"] == 5
+
+
+def test_player_named_like_a_suspect_is_rejected() -> None:
+    # Lake House suspects include Leo; case and spaces don't matter.
+    resp = client.post("/api/cases", json={"players": ["Ann", " leo ", "Cy"], "theme": "lake-house",
+                                           "demo": True})
+    assert resp.status_code == 422
+    assert resp.json()["detail"] == "leo is a suspect in this story. Add an initial, like leo K."
+    solo = client.post("/api/cases", json={"solo": {"me": "Maya"}, "theme": "lake-house"})
+    assert solo.status_code == 422
+    # With an initial it's fine, and Leo is not a suspect in the office story.
+    ok = client.post("/api/cases", json={"players": ["Ann", "Leo K", "Cy"], "theme": "lake-house",
+                                         "demo": True})
+    assert ok.status_code == 201, ok.text
+    assert client.post("/api/cases", json={"players": ["Ann", "Leo", "Cy"], "theme": "office-party",
+                                           "demo": True}).status_code == 201

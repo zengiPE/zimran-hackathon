@@ -302,6 +302,12 @@ def create_case(body: CreateCase, session: SessionDep) -> dict:
         raise HTTPException(422, "player names must be non-empty")
     if body.theme not in THEMES:
         raise HTTPException(422, f"unknown theme {body.theme}")
+    # A player called Leo in a story with a suspect Leo makes every clue ambiguous.
+    # Only checked here: a crew's next case may switch stories, and that must not fail.
+    suspects = {s.lower() for s in THEMES[body.theme].suspect_names}
+    clash = next((n for n, ai in seats if not ai and n.lower() in suspects), None)
+    if clash:
+        raise HTTPException(422, f"{clash} is a suspect in this story. Add an initial, like {clash} K.")
     personas = iter(friends.personas_for(sum(ai for _, ai in seats)))
     full: list[Seat] = [(n, ai, next(personas).key if ai else None) for n, ai in seats]
     case, players = _build_case(session, full, demo=demo, days=days, theme=body.theme,
