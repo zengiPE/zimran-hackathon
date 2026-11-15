@@ -684,3 +684,13 @@ a.cf-btn:focus-visible {
   line-height: 16px;
   overflow-wrap: anywhere;
 }
+
+/* Vote: the selected card's ring sits 3-6px outside it, and people tap that "edge".
+   Grow each card's hit area by 6px so the ring and the gaps between cards select it too
+   (gaps are 12px+, so neighbours never overlap). */
+.cf-suspect--pick::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  z-index: -1;
+}
