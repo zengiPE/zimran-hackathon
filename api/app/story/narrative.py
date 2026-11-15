@@ -179,10 +179,10 @@ JSON_FORMAT = (
 
 
 def _llm_texts(client: openai.OpenAI, theme: Theme, facts: Sequence[ClueFact]) -> dict[str, str]:
-    response = client.chat.completions.create(
+    response = llm_client.chat(
+        client,
         model=llm_client.model(),
         max_completion_tokens=8000,
-        **llm_client.extra_params(),
         response_format={"type": "json_object"},
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT + JSON_FORMAT},
