@@ -31,7 +31,10 @@ from app.story.themes import ClueFormat, Theme
 log = logging.getLogger(__name__)
 
 MAX_TEXT_CHARS = 320
-LLM_TIMEOUT_S = 45.0
+# Narration runs inside POST /api/cases, and Vercel stops a function after 60 s. One try of
+# at most 20 s leaves room for the engine and the database; on timeout we use templates.
+LLM_TIMEOUT_S = 20.0
+LLM_MAX_RETRIES = 0
 
 
 @dataclass(frozen=True)
@@ -179,6 +182,7 @@ def _llm_texts(client: openai.OpenAI, theme: Theme, facts: Sequence[ClueFact]) -
     response = client.chat.completions.create(
         model=llm_client.model(),
         max_completion_tokens=8000,
+        **llm_client.extra_params(),
         response_format={"type": "json_object"},
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT + JSON_FORMAT},
@@ -194,7 +198,7 @@ def _llm_texts(client: openai.OpenAI, theme: Theme, facts: Sequence[ClueFact]) -
 
 
 def _default_client() -> openai.OpenAI | None:
-    return llm_client.openai_client(timeout=LLM_TIMEOUT_S, max_retries=1)
+    return llm_client.openai_client(timeout=LLM_TIMEOUT_S, max_retries=LLM_MAX_RETRIES)
 
 
 def narrate_case(

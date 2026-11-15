@@ -199,3 +199,24 @@ def test_templates_are_deterministic():
 def test_duplicate_fact_ids_rejected():
     with pytest.raises(ValueError):
         narrate_case(LAKE, [FACTS[0], FACTS[0]], use_llm=False)
+
+
+def test_narration_asks_for_minimal_reasoning():
+    client = FakeClient(texts={"f1": "Text from Rosa: Maya swore she never entered the Kitchen."})
+    narrate_case(LAKE, FACTS, client=client)
+    assert client.kwargs["reasoning_effort"] == "minimal"
+
+
+def test_narration_wait_fits_one_vercel_request(monkeypatch):
+    from app import llm_client
+    from app.story import narrative
+
+    seen = {}
+
+    def fake_client(timeout, max_retries):
+        seen.update(timeout=timeout, max_retries=max_retries)  # no client = templates
+
+    monkeypatch.setattr(llm_client, "openai_client", fake_client)
+    narrative._default_client()
+    # Vercel stops the function at 60 s; the engine and the database need time too.
+    assert seen["timeout"] * (1 + seen["max_retries"]) <= 30

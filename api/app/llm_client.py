@@ -22,6 +22,12 @@ def model() -> str:
     return get_settings().openai_model
 
 
+def extra_params() -> dict[str, str]:
+    """Request params that depend on the model: reasoning effort, unless it is switched off."""
+    effort = get_settings().openai_reasoning_effort.strip()
+    return {"reasoning_effort": effort} if effort else {}
+
+
 def message_text(response) -> str | None:
     """Text of the first choice, or None on refusal / content filter / empty output."""
     if not response.choices:

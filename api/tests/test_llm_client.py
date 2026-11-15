@@ -51,3 +51,20 @@ def test_problems_return_none(monkeypatch, kwargs) -> None:
 def test_no_key_means_no_call() -> None:
     assert llm._client() is None  # OPENAI_API_KEY is empty in tests
     assert llm.chat_line(CTX) is None
+
+
+def test_sends_minimal_reasoning_effort(monkeypatch) -> None:
+    client = fake(content="Could be Priya.")
+    monkeypatch.setattr(llm, "_client", lambda: client)
+    llm.chat_line(CTX)
+    assert client.calls[0]["reasoning_effort"] == "minimal"
+
+
+def test_empty_reasoning_effort_is_not_sent(monkeypatch) -> None:
+    from app.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "openai_reasoning_effort", "")
+    client = fake(content="Could be Priya.")
+    monkeypatch.setattr(llm, "_client", lambda: client)
+    llm.chat_line(CTX)
+    assert "reasoning_effort" not in client.calls[0]

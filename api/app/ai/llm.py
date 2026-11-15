@@ -74,6 +74,7 @@ def chat_line(ctx: ReplyContext) -> str | None:
         response = client.chat.completions.create(
             model=llm_client.model(),
             max_completion_tokens=2000,
+            **llm_client.extra_params(),
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": _prompt(ctx)},

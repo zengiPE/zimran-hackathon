@@ -9,6 +9,7 @@ Prints each clue with its source: "llm" if the model's text passed validation, o
 
 import logging
 import sys
+import time
 
 from app.story import ClueFact, get_theme, narrate_case, validate_text
 
@@ -29,7 +30,9 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     theme = get_theme(sys.argv[1] if len(sys.argv) > 1 else "lake-house")
     facts = sample_facts(theme.id)
+    started = time.perf_counter()
     clues = narrate_case(theme, facts)
+    took = time.perf_counter() - started
     llm_texts = {c.fact_id: c.text for c in clues if c.source == "llm"}
     for fact, clue in zip(facts, clues):
         print(f"\n[{clue.source}] {clue.format_label}")
@@ -38,7 +41,7 @@ def main() -> None:
         if clue.source == "template" and fact.id not in llm_texts:
             print(f"  (template; validator would say: {validate_text(theme, fact, clue.text) or 'ok'})")
     used = sum(c.source == "llm" for c in clues)
-    print(f"\n{used}/{len(clues)} clues from the LLM, the rest from templates.")
+    print(f"\n{used}/{len(clues)} clues from the LLM, the rest from templates. Took {took:.1f} s.")
 
 
 if __name__ == "__main__":
