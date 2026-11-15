@@ -8,7 +8,10 @@ What it believes = engine.candidates(those facts): exhaustive, never a guess.
 Moves:
   each day      every AI posts its new clue (template line + the clue attached)
   human posts   1 AI replies (2 if the post changed two AIs' suspects): a hypothesis,
-                a question about a suspect it can't rule out, or a reaction
+                a question about a suspect it can't rule out, or a reaction.
+                A post that names an AI ("Nora, ...") is answered by that AI; a post that
+                names a suspect gets an answer about that suspect (possible, or ruled out
+                and by which of its clues), decided by the engine
   voting opens  every AI votes: its only candidate, else a seeded pick among candidates
 
 Serverless-friendly: no background tasks. Posts are written right away with a future
@@ -19,6 +22,7 @@ in `typing`. AiAction rows make every move idempotent across concurrent polls.
 from __future__ import annotations
 
 import random
+import re
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.exc import IntegrityError
@@ -99,8 +103,21 @@ def validate_reply(theme_id: str, text: str, allowed_suspects: set[str],
     return None
 
 
+def answer_line(poss: list[str], x: str, reason: str | None) -> str:
+    """Engine-true answer to "anything about X?": X is possible, the one left, or ruled out."""
+    if poss == [x]:
+        return f"It's {x}. My notes leave nobody else."
+    if x in poss:
+        return f"{x}? Still possible on my side. I can't rule {x} out: it's {join_names(poss)}."
+    if reason:
+        return f"{x} is out for me. My clue says: {reason} Still open: {join_names(poss)}."
+    return f"{x} is out for me. Still open: {join_names(poss)}."
+
+
 def template_line(persona: Persona, intent: str, rng: random.Random, poss: list[str],
-                  who: str, x: str) -> str:
+                  who: str, x: str, reason: str | None = None) -> str:
+    if intent == "answer":
+        return answer_line(poss, x, reason)
     if intent == "hypothesis":
         options = persona.hypothesis_one if len(poss) == 1 else persona.hypothesis
     else:
@@ -110,7 +127,7 @@ def template_line(persona: Persona, intent: str, rng: random.Random, poss: list[
 
 def write_line(data: dict, persona: Persona, intent: str, rng: random.Random,
                clues: list[dict], poss: list[str], recent: list[str], who: str,
-               x: str) -> tuple[str, str]:
+               x: str, reason: str | None = None) -> tuple[str, str]:
     """(text, source). The LLM if configured and the line passes validation, else a template."""
     mentioned = {m for c in clues for m in c.get("mentions", [])}
     labels = data["labels"]
@@ -120,6 +137,8 @@ def write_line(data: dict, persona: Persona, intent: str, rng: random.Random,
     else:
         allowed_suspects = set(poss) | (mentioned & set(suspect_names(data, range(len(
             data["suspects"])))))
+    if intent == "answer":
+        allowed_suspects.add(x)  # the suspect the human asked about
     ctx = llm.ReplyContext(
         persona_name=persona.name, persona_style=persona.style, intent=intent,
         intro=data["intro"], my_clues=[c["text"] for c in clues], possible=poss,
@@ -128,7 +147,26 @@ def write_line(data: dict, persona: Persona, intent: str, rng: random.Random,
     if text and validate_reply(data["theme"], text, allowed_suspects,
                                mentioned | public_terms | set(poss)) is None:
         return text, "llm"
-    return template_line(persona, intent, rng, poss, who, x), "template"
+    return template_line(persona, intent, rng, poss, who, x, reason), "template"
+
+
+def first_named(text: str, names: list[str]) -> str | None:
+    """The name that appears first in the text (whole word, any case), or None."""
+    hits = []
+    for name in names:
+        m = re.search(rf"(?<!\w){re.escape(name)}(?!\w)", text, re.IGNORECASE)
+        if m:
+            hits.append((m.start(), name))
+    return min(hits)[1] if hits else None
+
+
+def ruling_out_clue(data: dict, clues: list[dict], suspect_id: int) -> str | None:
+    """A clue this AI knows without which the suspect would be possible again (its 'why')."""
+    for c in clues:
+        rest = [o for o in clues if o is not c]
+        if suspect_id in possible(data, rest):
+            return c["text"]
+    return None
 
 
 # ---------- moves ----------
@@ -214,21 +252,37 @@ def respond(session: Session, snap, author: Player, post: BoardPost,
                 changed.append(p)
         beliefs[p.idx] = (after, poss_after)
 
-    responders = changed[:2] or [rng.choice(ais)]
+    # "Nora, anything about Leo?": the AI named in the post answers, about the suspect named.
+    text_in = post.text or ""
+    by_name = {p.name: p for p in ais}
+    addressed = by_name.get(first_named(text_in, list(by_name)))
+    all_suspects = suspect_names(data, range(len(data["suspects"])))
+    asked = first_named(text_in, all_suspects)
+
+    if addressed is not None:
+        responders = [addressed] + [p for p in changed if p is not addressed][:1]
+    else:
+        responders = changed[:2] or [rng.choice(ais)]
     started = aware(post.created_at)
     replies = []
     for k, p in enumerate(responders):
         clues, poss_ids = beliefs[p.idx]
         poss = suspect_names(data, poss_ids)
-        if p in changed:
-            intent = "hypothesis"
+        reason = None
+        if asked is not None and (p is addressed or (addressed is None and k == 0)):
+            intent, x = "answer", asked
+            asked_id = all_suspects.index(asked)
+            if asked_id not in poss_ids:
+                reason = ruling_out_clue(data, clues, asked_id)
+        elif p in changed or p is addressed:
+            intent, x = "hypothesis", rng.choice(poss)
         else:
             intent = rng.choice(["hypothesis", "ask", "react"])
             if intent == "ask" and len(poss) < 2:
                 intent = "hypothesis"
-        x = rng.choice(poss)
+            x = rng.choice(poss)
         text, _source = write_line(data, BY_KEY[p.persona], intent, rng, clues, poss, recent,
-                                   author.name, x)
+                                   author.name, x, reason)
         reply = BoardPost(case_id=snap.case.id, player_idx=p.idx, text=text, is_ai=True,
                           visible_at=started + _delay(rng.uniform(2, 6) + 2.5 * k))
         session.add(reply)

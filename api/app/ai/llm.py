@@ -22,6 +22,9 @@ INTENTS = {
     "hypothesis": "Say who it could still be, using only names from 'possible'.",
     "ask": "Ask {who} whether they have anything about {x}.",
     "react": "React briefly to the last message, then say who is still possible for you.",
+    "answer": ("{who} asked you about {x}. Answer {who} directly about {x}: {x} is still "
+               "possible for you only if {x} is in 'possible'. If {x} is not in 'possible', "
+               "say {x} is out and point to the clue in 'my_clues' that rules {x} out."),
 }
 
 SYSTEM_PROMPT = f"""You are an AI teammate in Casefile, a mystery game a group of friends solves in a
@@ -41,13 +44,13 @@ Hard rules (a message that breaks any rule is thrown away):
 class ReplyContext:
     persona_name: str
     persona_style: str
-    intent: str  # hypothesis | ask | react
+    intent: str  # hypothesis | ask | react | answer
     intro: str
     my_clues: list[str]  # clue sentences this AI knows
     possible: list[str]  # suspect names still possible for this AI
     recent: list[str]  # "Name: text", oldest first
     who: str  # the human teammate
-    x: str  # suspect to ask about (intent "ask")
+    x: str  # suspect to ask about (intent "ask") or asked about (intent "answer")
 
 
 def _client() -> openai.OpenAI | None:
